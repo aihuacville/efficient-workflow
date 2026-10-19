@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.turbo/
+dist/
+coverage/
+.env
+.env*.local
+.vercel
+.DS_Store
+playwright-report/
+test-results/
+storybook-static/
