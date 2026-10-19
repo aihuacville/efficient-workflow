@@ -1,0 +1,231 @@
+// Core data model. See README → "Data & Security".
+// PostGIS columns are `Unsupported` in Prisma; query them with $queryRaw (ST_DWithin / ST_Distance).
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis]
+}
+
+enum Role {
+  CUSTOMER
+  OWNER
+  STAFF
+  ADMIN
+}
+
+enum NotifyPref {
+  EMAIL
+  SMS
+}
+
+// Keep in sync with ORDER_STATUSES in @ew/workflow.
+enum OrderStatus {
+  SUBMITTED
+  PROCESSING
+  DISPATCHING
+  ACCEPTED
+  SCHEDULED
+  FINISHED
+  VERIFIED
+  PAYMENT_REQUESTED
+  PAID
+  PAYMENT_RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum AttachmentKind {
+  NOTICE
+  COMPLETION
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id         String     @id @default(cuid())
+  email      String?    @unique
+  phone      String?
+  name       String?
+  notifyPref NotifyPref @default(EMAIL) @map("notify_pref")
+  roles      Role[]     @default([CUSTOMER])
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  ownedBusinesses Business[]
+  orders          Order[]
+  orderEvents     OrderEvent[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Business {
+  id           String                                 @id @default(cuid())
+  ownerId      String                                 @map("owner_id")
+  name         String
+  location     Unsupported("geography(Point, 4326)")?
+  serviceArea  Unsupported("geography(Polygon, 4326)")? @map("service_area")
+  rating       Decimal                                @default(0) @db.Decimal(2, 1)
+  active       Boolean                                @default(true)
+  verified     Boolean                                @default(false)
+  createdAt    DateTime                               @default(now()) @map("created_at")
+
+  owner    User              @relation(fields: [ownerId], references: [id])
+  services BusinessService[]
+  orders   Order[]
+  offers   DispatchOffer[]
+
+  @@index([location], type: Gist)
+  @@map("businesses")
+}
+
+model ServiceType {
+  id   String @id // matches SERVICE_TYPES in @ew/extraction
+  name String
+
+  businesses BusinessService[]
+  orders     Order[]
+
+  @@map("service_types")
+}
+
+model BusinessService {
+  businessId    String  @map("business_id")
+  serviceTypeId String  @map("service_type_id")
+  basePrice     Decimal @map("base_price") @db.Decimal(10, 2)
+
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  @@id([businessId, serviceTypeId])
+  @@map("business_services")
+}
+
+model Order {
+  id            String                                 @id @default(cuid())
+  customerId    String?                                @map("customer_id")
+  businessId    String?                                @map("business_id")
+  serviceTypeId String                                 @map("service_type_id")
+  status        OrderStatus                            @default(SUBMITTED)
+  contactName   String                                 @map("contact_name")
+  contactEmail  String?                                @map("contact_email")
+  contactPhone  String?                                @map("contact_phone")
+  notifyPref    NotifyPref                             @default(EMAIL) @map("notify_pref")
+  address       Json
+  location      Unsupported("geography(Point, 4326)")?
+  extractedData Json?                                  @map("extracted_data")
+  notes         String?
+  dueDate       DateTime?                              @map("due_date") @db.Date
+  scheduledAt   DateTime?                              @map("scheduled_at")
+  createdAt     DateTime                               @default(now()) @map("created_at")
+  updatedAt     DateTime                               @updatedAt @map("updated_at")
+
+  customer    User?           @relation(fields: [customerId], references: [id])
+  business    Business?       @relation(fields: [businessId], references: [id])
+  serviceType ServiceType     @relation(fields: [serviceTypeId], references: [id])
+  events      OrderEvent[]
+  attachments Attachment[]
+  offers      DispatchOffer[]
+  payments    Payment[]
+
+  @@index([status])
+  @@index([businessId])
+  @@index([createdAt])
+  @@index([location], type: Gist)
+  @@map("orders")
+}
+
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String       @map("order_id")
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  actorId    String?      @map("actor_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  orderId   String         @map("order_id")
+  kind      AttachmentKind
+  blobKey   String         @map("blob_key")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model DispatchOffer {
+  id         String      @id @default(cuid())
+  orderId    String      @map("order_id")
+  businessId String      @map("business_id")
+  score      Float
+  status     OfferStatus @default(PENDING)
+  expiresAt  DateTime    @map("expires_at")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([orderId])
+  @@map("dispatch_offers")
+}
+
+model Payment {
+  id          String          @id @default(cuid())
+  orderId     String          @map("order_id")
+  provider    PaymentProvider
+  providerRef String          @unique @map("provider_ref")
+  amount      Decimal         @db.Decimal(10, 2)
+  currency    String          @default("usd")
+  status      PaymentStatus   @default(PENDING)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?  @map("actor_id")
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  diff      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entity, entityId])
+  @@map("audit_log")
+}

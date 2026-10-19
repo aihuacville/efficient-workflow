@@ -1,0 +1,24 @@
+{
+  "name": "efficient-workflow",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @ew/db generate",
+    "db:migrate": "pnpm --filter @ew/db migrate",
+    "db:seed": "pnpm --filter @ew/db seed",
+    "db:studio": "pnpm --filter @ew/db studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.11.9",
+    "typescript": "^5.9.3"
+  }
+}

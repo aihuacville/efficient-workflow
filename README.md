@@ -355,22 +355,87 @@ efficient-workflow/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 22 LTS, pnpm 9
+- Node.js 22+ and pnpm 10 (`corepack enable` picks up the version pinned in `package.json`)
 - Docker (for local Postgres, Redis, and Mailpit)
+- An Anthropic API key, for photo extraction. Without one you can still fill the form in by hand.
 
-### Setup
+### Install
 
 ```bash
 git clone https://github.com/<org>/efficient-workflow.git
 cd efficient-workflow
 pnpm install
 
-cp apps/web/.env.example apps/web/.env.local   # fill in keys (see below)
+cp apps/web/.env.example apps/web/.env.local   # set ANTHROPIC_API_KEY (see below)
+cp packages/db/.env.example packages/db/.env   # DATABASE_URL for the Prisma CLI
 
 docker compose up -d            # postgres+postgis, redis, mailpit
-pnpm db:migrate                 # prisma migrate dev
-pnpm db:seed                    # demo users, businesses, service types
+pnpm db:migrate                 # create tables (first run asks for a migration name, e.g. "init")
+pnpm db:seed                    # demo users, a business, service types
+```
+
+### Run
+
+```bash
+# Development (hot reload). Generates the Prisma client first.
 pnpm dev                        # http://localhost:3000
+
+# Production build, run locally
+pnpm build
+pnpm --filter @ew/web start     # http://localhost:3000
+
+# Checks
+pnpm test                       # unit tests (workflow, dispatch, extraction)
+pnpm typecheck
+curl localhost:3000/api/health  # {"ok":true} when the database is reachable
+
+# Stop local services
+docker compose down             # add -v to also delete the database volume
+```
+
+### Demo
+
+The MVP demo covers **QR → upload → AI autofill → confirm → status tracking**.
+
+**In the browser**
+
+1. Open <http://localhost:3000> and click **Start a request**, or go straight to <http://localhost:3000/request>. That's the URL a printed QR code would point to.
+2. Click **Take or upload a photo** and choose a photo of a notice (an inspection letter, a compliance notice, etc.).
+3. Review the pre-filled form. Fields the AI wasn't sure about are highlighted in orange. Add an email or phone number, then click **Confirm request**.
+4. You land on `/track/<order id>`, which shows the order at **Request received**.
+
+No API key? Click **Skip and fill in by hand** in step 2. The rest of the flow works the same.
+
+**On your phone** (same Wi-Fi as your computer):
+
+```bash
+pnpm --filter @ew/web dev --hostname 0.0.0.0
+# then open http://<your-computer's-LAN-IP>:3000/request on the phone
+```
+
+The camera opens directly from the upload button.
+
+**From the command line**
+
+```bash
+# 1. Extract fields from a photo
+curl -F "image=@notice.jpg;type=image/jpeg" localhost:3000/api/v1/extract
+
+# 2. Create an order (normally the browser sends this after you confirm)
+curl -X POST localhost:3000/api/v1/orders \
+  -H 'content-type: application/json' \
+  -d '{
+    "contactName": "Blue Door Cafe", "contactEmail": "owner@bluedoor.test", "contactPhone": "",
+    "notifyPref": "EMAIL",
+    "address": {"line1": "12 Main St", "line2": "", "city": "Springfield", "state": "IL", "postalCode": "62701"},
+    "serviceType": "fire_safety_inspection",
+    "issuingAuthority": "Springfield Fire Department", "noticeId": "FS-2026-0412",
+    "dueDate": "2026-11-15", "notes": "", "extraction": null
+  }'
+# → {"id":"<order id>"}; open http://localhost:3000/track/<order id>
+
+# 3. Browse the data
+pnpm db:studio                  # Prisma Studio at http://localhost:5555
 ```
 
 ### Demo accounts (seeded)
@@ -427,13 +492,13 @@ SENTRY_DSN=
 |---------|-------------|
 | `pnpm dev` | Run all apps in dev mode |
 | `pnpm build` | Production build (Turborepo cached) |
-| `pnpm lint` / `pnpm format` | ESLint / Prettier |
+| `pnpm format` | Prettier |
 | `pnpm typecheck` | `tsc --noEmit` across workspaces |
-| `pnpm test` | Vitest unit & integration tests |
-| `pnpm test:e2e` | Playwright end-to-end tests |
-| `pnpm storybook` | Component workshop (Vite) |
-| `pnpm db:migrate` / `db:studio` | Prisma migrate / Prisma Studio |
-| `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe` | Test Stripe webhooks locally |
+| `pnpm test` | Vitest unit tests |
+| `pnpm db:generate` | Regenerate the Prisma client after editing `schema.prisma` |
+| `pnpm db:migrate` / `db:seed` / `db:studio` | Prisma migrate / seed demo data / Prisma Studio |
+
+Planned, not yet set up: `pnpm lint` (ESLint), `pnpm test:e2e` (Playwright), `pnpm storybook`, and `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe` for testing Stripe webhooks.
 
 ---
 

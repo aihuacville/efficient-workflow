@@ -1,0 +1,21 @@
+{
+  "name": "@ew/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@ew/config": "workspace:*",
+    "@mui/material": "^6.5.0",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "typescript": "^5.9.3"
+  }
+}
