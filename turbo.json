@@ -1,23 +1,15 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["NODE_ENV"],
   "tasks": {
-    "generate": {
-      "cache": false
-    },
     "build": {
-      "dependsOn": ["^build", "^generate"],
-      "env": ["DATABASE_URL", "ANTHROPIC_API_KEY", "NEXT_PUBLIC_*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "dev": {
-      "dependsOn": ["^generate"],
       "cache": false,
       "persistent": true
     },
-    "typecheck": {
-      "dependsOn": ["^generate"]
-    },
+    "typecheck": {},
     "test": {
       "outputs": ["coverage/**"]
     }

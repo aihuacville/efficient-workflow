@@ -10,15 +10,11 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "format": "prettier --write .",
-    "db:generate": "pnpm --filter @ew/db generate",
-    "db:migrate": "pnpm --filter @ew/db migrate",
-    "db:seed": "pnpm --filter @ew/db seed",
-    "db:studio": "pnpm --filter @ew/db studio"
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.6.2",
-    "turbo": "^2.11.9",
+    "prettier": "^3.9.10",
+    "turbo": "^2.11.10",
     "typescript": "^5.9.3"
   }
 }

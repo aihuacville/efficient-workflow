@@ -1,4 +1,0 @@
-{
-  "extends": "@ew/config/tsconfig/nextjs.json",
-  "include": ["src"]
-}

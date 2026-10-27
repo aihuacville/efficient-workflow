@@ -11,3 +11,4 @@ playwright-report/
 test-results/
 storybook-static/
 **/generated/
+*.tsbuildinfo
