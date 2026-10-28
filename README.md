@@ -74,6 +74,25 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 
 **Other commands:** `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
+## Live demo
+
+The app is live at **https://workflow.aihuachen.com**. Vercel deploys every push to `main`.
+
+QR codes are in [docs/qr/](docs/qr/):
+
+| File | Opens | Use it for |
+|---|---|---|
+| [workflow-request.png](docs/qr/workflow-request.png) | `https://workflow.aihuachen.com/request` | The demo: scanning opens the request form directly |
+| [workflow-request.svg](docs/qr/workflow-request.svg) | the same | Slides and print (sharp at any size) |
+| [workflow-home.png](docs/qr/workflow-home.png) | `https://workflow.aihuachen.com` | The landing page, as a colorful poster ("Scan me. We've got this!") for slides and printouts |
+| [workflow-home.svg](docs/qr/workflow-home.svg) | the same | Editable version of the poster. Prefer the PNG: the SVG's emoji and font depend on the device |
+
+The codes hold the address directly, with no redirect service, so they never expire. To make a new one:
+
+```bash
+npx qrcode@1.5.4 -w 1024 -m 2 -e M -o docs/qr/name.png "https://workflow.aihuachen.com/path"
+```
+
 ## Decisions
 
 ### Styling: keep MUI + Emotion for the demo (decided Oct 27, 2026)
@@ -181,7 +200,8 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 
 **Sat Oct 31: Polish**
 - [ ] Phone and laptop layout polish
-- [ ] Demo data and a QR code that opens the request page
+- [x] QR code that opens the request page ([docs/qr/](docs/qr/))
+- [ ] Demo data
 - [ ] Spending limit on the API key; password-protect the demo link
 - [ ] Bug fixes
 - [ ] *You:* full run-through
