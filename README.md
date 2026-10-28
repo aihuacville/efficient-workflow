@@ -23,9 +23,11 @@ The app uses **responsive web design**: one website that adapts its layout to th
 | Role | Main device | Design focus |
 |---|---|---|
 | **Customer** | Phone (QR code) | One step at a time, big tap targets, the camera opens directly, no sign-up wall |
-| **Field staff** | Phone | Today's jobs as a list, one-tap status updates, photo upload, tolerates a poor signal |
-| **Business owner** | Both | Cards on the phone; a table or calendar view on a laptop |
-| **Dispatcher / admin** | Laptop | Information-dense: tables, filters, a map, several panels side by side |
+| **Technician** (field staff) | Phone | Today's jobs as a list, one-tap status updates, photo upload, tolerates a poor signal |
+| **Business owner** | Both | Cards on the phone; a table or calendar view on a laptop. Accepts jobs and assigns technicians |
+| **Dispatcher / admin** | Laptop | Information-dense: tables, filters, a map, several panels side by side. Approves the machine's suggested business for each request |
+
+**Dispatch keeps a human in the loop.** The system ranks businesses for each request and suggests one, with the reasons ("offers this service, closest, best rated"). The dispatcher approves it with one tap or chooses another. Nothing is offered to a business without a person's approval. The ranking uses simple scoring rules (service offered, distance, rating, free time) rather than AI, so it's predictable and easy to explain.
 
 The layout differs a lot by role, but it stays one app. A dispatcher's queue can be a table on a laptop and a stack of cards on a phone, built from the same data and components.
 
@@ -138,16 +140,18 @@ As a small team, we build a **demo MVP in five days** and present it on **Monday
 
 ### Demo MVP scope
 
-The demo shows the core loop, **request → dispatch → job done**, live on a phone and a laptop:
+The demo shows the core loop, **request → dispatch → job done**, live on phones and a laptop. It features three roles, with the dispatcher shown briefly in between:
 
-1. **Phone:** scan a QR code → photo of a notice → AI fills in the form → confirm → tracking page.
-2. **Laptop:** the dispatcher offers the job → the business owner accepts, schedules and marks it finished.
-3. **Phone:** the tracking page updates, and the customer confirms the work.
+1. **Customer (phone):** scan a QR code → photo of a notice → AI fills in the form → confirm → tracking page.
+2. **Dispatcher (laptop, briefly):** the system suggests a business with its reasons → the dispatcher approves the offer.
+3. **Business owner (laptop):** accepts the job → schedules the visit → assigns a technician.
+4. **Technician (phone):** sees today's jobs → taps On my way → Started → Done, with an optional photo of the finished work.
+5. **Customer (phone):** the tracking page updates at each step → confirms the work → rates the business.
 
 **Cut from the demo** (shown as "next steps" in the presentation):
 - **Real sign-in:** a demo account switcher stands in for it.
 - **Email and text notifications:** status changes show on the tracking page instead.
-- **Payments, automatic dispatch, the staff view and PWA features.**
+- **Fully automatic dispatch** (offers sent without approval, with timeouts), **payments, and PWA features** such as offline mode and push notifications.
 
 ### Pilot success criteria
 
@@ -179,7 +183,7 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
   - [ ] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
   - [ ] The final button says what happens next: "Send request. We'll find a business for you."
 - [ ] Customer tracking page
-  - [ ] Status timeline: Request received → Business assigned → Visit scheduled → Work done → You confirm
+  - [ ] Status timeline: Request received → Business assigned → Visit scheduled → Technician on the way → Work done → You confirm
   - [ ] Each step shows its date, plus the business name and visit time once known; the current step is highlighted
 - [ ] After submitting: show the tracking link with a **Copy link** button and "Save this link to check progress" (no sign-in for customers, and no email until the pilot)
 - [ ] *You:* review the phone screens
@@ -187,11 +191,15 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 **Thu Oct 29: AI autofill and dispatch**
 - [ ] AI autofill from a photo of the notice
 - [ ] Dispatcher page: queue of new requests, offer a job to a business, cancel
+- [ ] Suggested business for each request (human in the loop)
+  - [ ] Scoring rules: offers the service, distance, rating, free time; tested
+  - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
 - [ ] *You:* find 2–3 real notice photos for the demo
 
-**Fri Oct 30: Owner flow and first deploy**
-- [ ] Demo account switcher (admin, owner, customer)
-- [ ] Owner page: accept or decline, schedule a visit, mark finished
+**Fri Oct 30: Owner and technician flow, first deploy**
+- [ ] Demo account switcher (dispatcher, owner, technician, customer)
+- [ ] Owner page: accept or decline, schedule a visit, assign a technician
+- [ ] Technician page (phone): today's jobs; On my way → Started → Done; optional photo of the finished work
 - [ ] Customer confirms the work is done, or reports a problem
 - [ ] Rating appears on the tracking page after the customer confirms, and is saved; the owner sees the stars on the job
 - [ ] Demo switch for the rating shows only in demo mode, as a backup; remove the `/track/demo` sample page
@@ -208,7 +216,7 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 
 **Sun Nov 1: Freeze and rehearse**
 - [ ] Code freeze at noon; only fixes after that
-- [ ] Final rehearsal on a real phone and laptop
+- [ ] Final rehearsal on a real phone and laptop: customer on one phone, technician on a second phone, owner and dispatcher on the laptop
 - [ ] Record a screen video of the full flow as a backup
 - [ ] *You:* slides, and a phone hotspot in case the Wi-Fi is bad
 
@@ -226,11 +234,11 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 
 - [ ] Payments: Stripe (including Apple Pay), and payouts to businesses
   - [ ] Add "Paid" (with an emailed receipt) as a step on the tracking page
-- [ ] Show each business's average rating to admins when choosing who to offer a job to
-- [ ] Automatic dispatch: match by distance and service type, with offer timeouts
+- [ ] Automatic dispatch for routine jobs: send the top suggestion without approval, with offer timeouts and fallback to the next business. The dispatcher still handles exceptions, and the approval mode stays available
+- [ ] Learn from dispatcher overrides: when the dispatcher picks a business other than the suggestion, record why and tune the scoring
 - [ ] Text message notifications
-- [ ] Staff view on phones
-- [ ] PWA: installable app, offline job list, push notifications
+- [ ] Technician view: route for the day, customer contact, checklists
+- [ ] PWA: installable app, offline job list for technicians, push notifications
 - [ ] Passkey sign-in
 - [ ] Google Sheets sync for owners
 - [ ] Admin reports and AI assistant
