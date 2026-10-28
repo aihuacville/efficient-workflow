@@ -76,6 +76,68 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 
 **Other commands:** `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
+## Exploring the server: the ratings endpoint
+
+A small, self-contained example of server-side code, added to explore how the backend works. The rating on `/track/demo` sends each rating to the server, which checks it, saves it and replies with JSON.
+
+**Where the code is:** [app/api/ratings/route.ts](apps/web/app/api/ratings/route.ts). In Next.js, a `route.ts` file inside `app/api/` is a **Route Handler**: server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
+
+**The flow:**
+
+```
+Phone: tap 4 stars, type a comment, tap Send rating
+   │  POST /api/ratings
+   │  { "stars": 4, "comment": "On time and friendly." }
+   ▼
+Server: checks the input → adds it to ratings.json → replies
+   │  201 Created
+   │  { "id": "r_7cbd550e", "stars": 4, "comment": "On time and friendly.",
+   │    "createdAt": "2026-10-28T21:32:31.681Z",
+   │    "message": "Thanks! Your 4-star rating was saved." }
+   ▼
+Phone: shows "Thanks! Your 4-star rating was saved." (the server's message)
+```
+
+**The two endpoints:**
+
+| Request | What it does | Replies |
+|---|---|---|
+| `POST /api/ratings` with `{ "stars": 1-5, "comment": "optional" }` | Saves one rating | `201` with the saved rating and a `message`, or `400` with an `error` |
+| `GET /api/ratings` | Lists every saved rating, newest first | `200` with `{ "ratings": [...] }` |
+
+**Try it** (with `pnpm dev` running):
+
+1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears: the page calls `GET /api/ratings` and shows every review, newest first, with the average ([ReviewList.tsx](apps/web/components/ReviewList.tsx)). Open http://localhost:3000/api/ratings to see the same data as raw JSON.
+2. **From the terminal, with no browser.** `curl` sends a request directly:
+
+   ```bash
+   # Save a rating
+   curl -X POST http://localhost:3000/api/ratings \
+     -H "Content-Type: application/json" \
+     -d '{"stars": 4, "comment": "On time and friendly."}'
+
+   # Bad input: the server refuses it with 400 and an error message
+   curl -X POST http://localhost:3000/api/ratings \
+     -H "Content-Type: application/json" \
+     -d '{"stars": 7}'
+
+   # List all ratings
+   curl http://localhost:3000/api/ratings
+   ```
+
+3. **Look at the saved file:** [apps/web/data/ratings.json](apps/web/data/ratings.json). Git ignores it, so test ratings aren't committed. Delete it to start over.
+4. **Watch the server side:** the terminal running `pnpm dev` logs each request, for example `POST /api/ratings 201 in 12ms`. Add a `console.log(...)` inside `route.ts` and it prints there, not in the browser. That's how you can tell the code runs on the server.
+
+**What it teaches:**
+- **Never trust the browser.** The form already limits stars to 1–5, but anyone can call the URL directly with `curl`. So the server checks every field itself and replies `400` with a clear `error` when something's wrong.
+- **Status codes carry meaning:** `201` saved, `400` your input is wrong, `200` here's what you asked for. The page uses `res.ok` to decide between showing the thank-you or the error.
+- **The page and server agree on a JSON shape.** That shape is the contract. Behind it, the storage can change without the page noticing.
+
+**Limits (it's an exploration, not the final design):**
+- **Storage is a JSON file**, so it works on one computer only. On Vercel the disk is read-only except `/tmp`, which is wiped regularly, so ratings on the live site don't last.
+- **Postgres replaces the file** in the data work this week. The URL and JSON shape stay the same, so the page won't need to change.
+- **Not linked to a job yet.** Real ratings will belong to an order, and only that order's customer can rate it.
+
 ## Live demo
 
 The app is live at **https://workflow.aihuachen.com**. Vercel deploys every push to `main`.

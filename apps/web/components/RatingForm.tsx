@@ -1,5 +1,6 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
@@ -15,24 +16,27 @@ const LABELS = ["", "Poor", "Fair", "Good", "Very good", "Excellent"] as const;
 
 /**
  * Five-star rating with an optional comment, shown once the customer confirms the work is done.
- * `onSubmit` saves the rating; until there's a database it only updates this screen.
+ * `onSubmit` saves the rating and may return a thank-you message to show; if it throws, the
+ * error message is shown and the customer can try again.
  */
 export function RatingForm({
   businessName,
   onSubmit,
 }: {
   businessName: string;
-  onSubmit?: (rating: RatingInput) => Promise<void> | void;
+  onSubmit?: (rating: RatingInput) => Promise<string | void> | string | void;
 }) {
   const [stars, setStars] = useState<number | null>(null);
   const [hover, setHover] = useState(-1);
   const [comment, setComment] = useState("");
   const [state, setState] = useState<"open" | "sending" | "sent" | "skipped">("open");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   if (state === "sent") {
     return (
       <Paper sx={{ p: 3 }}>
-        <Typography fontWeight={600}>Thanks for your feedback!</Typography>
+        <Typography fontWeight={600}>{message || "Thanks for your feedback!"}</Typography>
         <Rating value={stars} readOnly sx={{ mt: 1 }} />
       </Paper>
     );
@@ -49,8 +53,14 @@ export function RatingForm({
   async function send() {
     if (!stars) return;
     setState("sending");
-    await onSubmit?.({ stars, comment: comment.trim() });
-    setState("sent");
+    setError("");
+    try {
+      setMessage((await onSubmit?.({ stars, comment: comment.trim() })) ?? "");
+      setState("sent");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't send your rating. Please try again.");
+      setState("open");
+    }
   }
 
   const shown = hover !== -1 ? hover : (stars ?? 0);
@@ -81,6 +91,7 @@ export function RatingForm({
           onChange={(e) => setComment(e.target.value)}
           slotProps={{ htmlInput: { maxLength: 500 } }}
         />
+        {error && <Alert severity="error">{error}</Alert>}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <Button variant="contained" disabled={!stars || state === "sending"} onClick={send}>
             Send rating

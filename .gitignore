@@ -12,3 +12,6 @@ test-results/
 storybook-static/
 **/generated/
 *.tsbuildinfo
+
+# Local exploration data (ratings.json)
+apps/web/data/
