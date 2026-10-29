@@ -1,0 +1,142 @@
+// The data model. Change it here, then run `pnpm db:migrate` to update the dev database.
+// Every row that belongs to a business stores businessId, and every query must filter by it,
+// so one business never sees another's data.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A service company using the platform, such as a lawn care or fire safety business.
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  /// Service types it offers, for example "Fire safety inspection". Used by dispatch suggestions.
+  services  String[]
+  /// Base location, for distance in dispatch suggestions.
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+
+  users   User[]
+  orders  Order[]
+  ratings Rating[]
+}
+
+enum Role {
+  DISPATCHER
+  OWNER
+  TECHNICIAN
+}
+
+/// Staff who sign in: platform dispatchers (no business), business owners and technicians.
+model User {
+  id         String    @id @default(cuid())
+  name       String
+  email      String    @unique
+  role       Role
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+  createdAt  DateTime  @default(now())
+
+  assignedOrders Order[]      @relation("Technician")
+  events         OrderEvent[]
+
+  @@index([businessId])
+}
+
+/// Someone who requests a service. Customers don't sign in; they follow their order's tracking link.
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime @default(now())
+
+  orders Order[]
+}
+
+/// Where an order is in its life. lib/orders/status.ts decides which moves are allowed.
+enum OrderStatus {
+  NEW
+  OFFERED
+  ACCEPTED
+  SCHEDULED
+  ON_THE_WAY
+  IN_PROGRESS
+  DONE
+  CONFIRMED
+  PROBLEM_REPORTED
+  CANCELLED
+}
+
+/// One job, from the customer's request to their confirmation.
+model Order {
+  id            String      @id @default(cuid())
+  /// Secret part of the customer's tracking link (/track/<token>). Random, so it can't be guessed.
+  trackingToken String      @unique @default(uuid())
+  status        OrderStatus @default(NEW)
+
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  serviceType String
+  address     String
+  lat         Float?
+  lng         Float?
+  dueDate     DateTime?
+  notes       String?
+
+  /// Set when the dispatcher offers the job; cleared if the business declines.
+  businessId   String?
+  business     Business? @relation(fields: [businessId], references: [id])
+  technicianId String?
+  technician   User?     @relation("Technician", fields: [technicianId], references: [id])
+  visitStart   DateTime?
+  visitEnd     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events OrderEvent[]
+  rating Rating?
+
+  @@index([status])
+  @@index([businessId, status])
+  @@index([technicianId])
+}
+
+/// Every status change, with who made it. Drives the tracking timeline and keeps a history.
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  /// Staff member who made the change; empty when the customer did.
+  actorId    String?
+  actor      User?        @relation(fields: [actorId], references: [id])
+  /// Optional detail, such as why a business declined.
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+/// The customer's rating of a finished order. One per order.
+model Rating {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// Copied from the order so a business's average is a simple query.
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  stars      Int
+  comment    String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+}

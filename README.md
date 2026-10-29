@@ -59,7 +59,8 @@ The layout differs a lot by role, but it stays one app. A dispatcher's queue can
 | `app/` | Pages and API endpoints. `(public)` holds customer pages; `(app)` holds dispatcher, owner and technician pages inside the app shell; `api/` holds server endpoints |
 | `components/` | Shared UI: app shell, page header, table-or-cards list, rating, reviews |
 | `theme/` | MUI theme: colors, breakpoints, touch-target sizes |
-| `lib/` | Server and business logic as it arrives, one folder per area (for example `lib/orders/`, `lib/dispatch/`), so any area could become its own package later |
+| `lib/` | Server and business logic, one folder per area (for example `lib/orders/`, `lib/dispatch/`), so any area could become its own package later. `lib/db.ts` is the shared database client; `lib/generated/` is Prisma's generated code (not committed) |
+| `prisma/` | `schema.prisma` (the data model) and `migrations/` (every change to the tables, as SQL files) |
 | `docs/` | QR codes and other project files |
 
 ## Run locally
@@ -93,6 +94,16 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 - **On a real phone:** connect it to the same Wi-Fi as your laptop. Then open the `Network:` address that `pnpm dev` prints (like `http://192.168.x.x:3000`).
 
 **Other commands:** `pnpm typecheck`, `pnpm build`, `pnpm format`.
+
+**Database commands** (they use the `dev` branch from `.env.local`):
+
+| Command | What it does |
+|---|---|
+| `pnpm db:migrate` | After changing `prisma/schema.prisma`: creates a migration file and applies it to `dev`. Add `--name what_changed` to name it |
+| `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
+| `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
+
+`pnpm install` also runs `prisma generate`, which rebuilds the typed client in `lib/generated/` from the schema.
 
 ## Exploring the server: the ratings endpoint
 
@@ -254,6 +265,45 @@ Neon project
 
 **Trade-offs:** development needs internet, and each query is a few milliseconds slower than a local database. Automated tests that need a database can use their own Neon branch, or a local Postgres if that becomes a problem.
 
+### Data access layer: Prisma (decided Oct 29, 2026)
+
+**Decision:** the app reads and writes Postgres through **Prisma**, an ORM (object-relational mapper). Prisma isn't required, since the app could talk to Postgres directly, but it's the best fit for this team and timeline.
+
+**What this layer does:** it sits between the app's code and the database. It defines the tables, changes them safely over time (migrations), and turns queries into typed function calls, so a typo in a column name fails while writing code instead of in front of a customer.
+
+**Options considered:**
+
+| Option | What it is | Pros | Cons |
+|---|---|---|---|
+| **Plain SQL** (`pg` or `@neondatabase/serverless` driver) | Write SQL strings directly | Nothing to learn but SQL; no extra tools | No automatic types, so mistakes show up only when the app runs. Migrations are up to us |
+| **Prisma** (chosen) | A readable schema file; Prisma generates the tables, migrations and a typed client | **The easiest schema to read**, solid migrations, **Prisma Studio** to browse data, the most widely used | One more tool with its own config and generated code. It had some setup friction in the earlier build |
+| **Drizzle** | Tables defined in TypeScript; queries look like SQL | Light and fast, close to SQL, fits serverless well | Schema and queries are more verbose; younger tooling |
+
+**The same query in each,** "the 10 newest orders for one business":
+
+```ts
+// Plain SQL: TypeScript doesn't know the result's shape
+await sql`SELECT * FROM "Order" WHERE "businessId" = ${id} ORDER BY "createdAt" DESC LIMIT 10`;
+
+// Prisma: reads like English, fully typed
+await prisma.order.findMany({ where: { businessId: id }, orderBy: { createdAt: "desc" }, take: 10 });
+
+// Drizzle: SQL-shaped, fully typed
+await db.select().from(orders).where(eq(orders.businessId, id)).orderBy(desc(orders.createdAt)).limit(10);
+```
+
+**Why Prisma:**
+- **The schema doubles as documentation:** the whole data model is readable in one file, `prisma/schema.prisma`.
+- **Prisma Studio** (`pnpm prisma studio`) shows and edits the data in a browser, which is handy for checking demo data.
+- **Migrations are saved files,** applied to the `dev` branch first and to `main` on deploy.
+- **The deadline:** it's already in the plan, and the setup problems from the earlier build are known.
+
+**Rules for using it:**
+- **All database access goes through `lib/`** (for example `lib/orders/`), never straight from pages. That keeps the "every query checks `businessId`" rule in one place, and limits what would change if the ORM did.
+- Migrations always run on `dev` first; `main` gets them only at deploy time.
+
+**When to reconsider:** if Prisma's generated code or config gets in the way, or the team wants to work closer to SQL, move to **Drizzle**. The database and its data stay the same; only the code in `lib/` that queries it changes.
+
 ### CMS: Payload for marketing pages only, later (decided Oct 29, 2026)
 
 **Decision:** don't use a CMS for the app itself. Payload is a good fit later for **marketing pages, FAQs and help articles** that people who don't code need to edit.
@@ -315,8 +365,11 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 
 **Wed Oct 28: Data and customer flow**
 - [x] *You:* Neon connected to Vercel; `dev` branch created; `.env.local` with the pooled `DATABASE_URL` (no Docker)
-- [ ] Prisma connected to Neon: first migration on the `dev` branch, then `main` at deploy time
-- [ ] Data model and order state machine, with tests
+- [x] Prisma connected to Neon: first migration (`init`) on the `dev` branch
+- [x] Data model: Business, User (dispatcher, owner, technician), Customer, Order, OrderEvent, Rating ([prisma/schema.prisma](prisma/schema.prisma))
+- [ ] Order state machine (`lib/orders/status.ts`), with tests
+- [ ] Move ratings from `data/ratings.json` to the database
+- [ ] Apply migrations to `main` at the first deploy (`pnpm db:deploy`)
 - [ ] Customer request form that saves real orders
   - [ ] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
   - [ ] The final button says what happens next: "Send request. We'll find a business for you."
