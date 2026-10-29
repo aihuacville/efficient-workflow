@@ -8,11 +8,11 @@ import { RatingForm, type RatingInput } from "@/components/RatingForm";
 import { ReviewList } from "@/components/ReviewList";
 
 /** Sends the rating to the server and returns the server's thank-you message. */
-async function sendRating(rating: RatingInput): Promise<string> {
+async function sendRating(trackingToken: string, rating: RatingInput): Promise<string> {
   const res = await fetch("/api/ratings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rating),
+    body: JSON.stringify({ trackingToken, ...rating }),
   });
   const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
   if (!res.ok) throw new Error(data.error ?? "Couldn't send your rating. Please try again.");
@@ -20,13 +20,19 @@ async function sendRating(rating: RatingInput): Promise<string> {
 }
 
 /** Demo-only switch to show the rating before the real "You confirmed" step exists. */
-export function RatingDemo() {
+export function RatingDemo({
+  trackingToken,
+  business,
+}: {
+  trackingToken: string;
+  business: { id: string; name: string };
+}) {
   const [show, setShow] = useState(false);
   // Counts ratings sent; each new one reloads the review list.
   const [sent, setSent] = useState(0);
 
   async function submit(rating: RatingInput) {
-    const message = await sendRating(rating);
+    const message = await sendRating(trackingToken, rating);
     setSent((n) => n + 1);
     return message;
   }
@@ -37,8 +43,8 @@ export function RatingDemo() {
         control={<Switch checked={show} onChange={(e) => setShow(e.target.checked)} />}
         label="Demo: show rating"
       />
-      {show && <RatingForm businessName="ABC Fire Safety" onSubmit={submit} />}
-      {show && sent > 0 && <ReviewList refreshKey={sent} />}
+      {show && <RatingForm businessName={business.name} onSubmit={submit} />}
+      {show && sent > 0 && <ReviewList businessId={business.id} refreshKey={sent} />}
     </Stack>
   );
 }

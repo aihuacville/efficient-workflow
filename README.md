@@ -76,6 +76,7 @@ Then, from the repo root:
 ```bash
 corepack enable   # first time only: gives you the pnpm version the repo pins
 pnpm install      # install dependencies
+pnpm db:seed      # first time only: adds the demo business and job to the dev database
 pnpm dev          # start the dev server
 ```
 
@@ -87,7 +88,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | `/request` | Customer request form (placeholder until Wednesday) |
 | `/dispatch` | Dispatcher queue (sample data for now) |
 | `/jobs` | Business owner's job offers |
-| `/track/demo` | Sample tracking page with the rating (turn on "Demo: show rating") |
+| `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
 
 **To check the phone layout:**
 - **In Chrome on your laptop:** open DevTools (`Cmd+Option+I`), then turn on the device toolbar (`Cmd+Shift+M`) and pick an iPhone.
@@ -100,6 +101,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | Command | What it does |
 |---|---|
 | `pnpm db:migrate` | After changing `prisma/schema.prisma`: creates a migration file and applies it to `dev`. Add `--name what_changed` to name it |
+| `pnpm db:seed` | Adds the demo data: ABC Fire Safety, a confirmed job to rate (`/track/demo`) and three past reviews. Run it again to reset the demo |
 | `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
 | `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
 
@@ -107,65 +109,76 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 
 ## Exploring the server: the ratings endpoint
 
-A small, self-contained example of server-side code, added to explore how the backend works. The rating on `/track/demo` sends each rating to the server, which checks it, saves it and replies with JSON.
+A small example of server-side code, first added to explore how the backend works. The rating on `/track/demo` sends each rating to the server, which checks it, saves it in Postgres and replies with JSON.
 
-**Where the code is:** [app/api/ratings/route.ts](app/api/ratings/route.ts). In Next.js, a `route.ts` file inside `app/api/` is a **Route Handler**: server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
+**Where the code is:**
+- [app/api/ratings/route.ts](app/api/ratings/route.ts): the **Route Handler**. In Next.js, a `route.ts` file inside `app/api/` is server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
+- [lib/ratings/input.ts](lib/ratings/input.ts): checks the input. It has no database code, so [its tests](lib/ratings/input.test.ts) run in `pnpm test`.
+- [lib/ratings/queries.ts](lib/ratings/queries.ts): reads and writes the `Rating` table with Prisma.
 
 **The flow:**
 
 ```
 Phone: tap 4 stars, type a comment, tap Send rating
    │  POST /api/ratings
-   │  { "stars": 4, "comment": "On time and friendly." }
+   │  { "trackingToken": "demo", "stars": 4, "comment": "On time and friendly." }
    ▼
-Server: checks the input → adds it to ratings.json → replies
+Server: checks the input → finds the job by its tracking token → checks it's confirmed
+        → saves the rating in Postgres → replies
    │  201 Created
-   │  { "id": "r_7cbd550e", "stars": 4, "comment": "On time and friendly.",
-   │    "createdAt": "2026-10-28T21:32:31.681Z",
+   │  { "id": "cmvu6o0jk…", "stars": 4, "comment": "On time and friendly.",
+   │    "createdAt": "2026-10-29T23:37:25.953Z",
    │    "message": "Thanks! Your 4-star rating was saved." }
    ▼
 Phone: shows "Thanks! Your 4-star rating was saved." (the server's message)
 ```
 
+**Rules:**
+- **A rating belongs to a job.** The customer proves the job is theirs with its **tracking token**, the secret part of their tracking link. Customers don't sign in, so the token is their key.
+- **Only after the customer confirms the work is done.** Before that, the server refuses.
+- **One rating per job.** Rating again changes the earlier rating, and the server replies "Your rating was changed to 5 stars."
+
 **The two endpoints:**
 
 | Request | What it does | Replies |
 |---|---|---|
-| `POST /api/ratings` with `{ "stars": 1-5, "comment": "optional" }` | Saves one rating | `201` with the saved rating and a `message`, or `400` with an `error` |
-| `GET /api/ratings` | Lists every saved rating, newest first | `200` with `{ "ratings": [...] }` |
+| `POST /api/ratings` with `{ "trackingToken": "...", "stars": 1-5, "comment": "optional" }` | Saves the job's rating, or changes it | `201` saved, `200` changed, `400` bad input, `404` no job with that token, `409` the job isn't confirmed yet |
+| `GET /api/ratings?businessId=...` | Lists a business's reviews, newest first | `200` with `{ "ratings": [...] }` |
 
-**Try it** (with `pnpm dev` running):
+**Try it** (run `pnpm db:seed` once first, then `pnpm dev`):
 
-1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears: the page calls `GET /api/ratings` and shows every review, newest first, with the average ([ReviewList.tsx](components/ReviewList.tsx)). Open http://localhost:3000/api/ratings to see the same data as raw JSON.
+1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears, with the demo business's three past reviews and yours ([ReviewList.tsx](components/ReviewList.tsx)). Open http://localhost:3000/api/ratings?businessId=demo_abc_fire to see the same data as raw JSON.
 2. **From the terminal, with no browser.** `curl` sends a request directly:
 
    ```bash
-   # Save a rating
+   # Save a rating (send it again with other stars to change it)
    curl -X POST http://localhost:3000/api/ratings \
      -H "Content-Type: application/json" \
-     -d '{"stars": 4, "comment": "On time and friendly."}'
+     -d '{"trackingToken": "demo", "stars": 4, "comment": "On time and friendly."}'
 
    # Bad input: the server refuses it with 400 and an error message
    curl -X POST http://localhost:3000/api/ratings \
      -H "Content-Type: application/json" \
-     -d '{"stars": 7}'
+     -d '{"trackingToken": "demo", "stars": 7}'
 
-   # List all ratings
-   curl http://localhost:3000/api/ratings
+   # A job that doesn't exist: 404
+   curl -X POST http://localhost:3000/api/ratings \
+     -H "Content-Type: application/json" \
+     -d '{"trackingToken": "nope", "stars": 5}'
+
+   # List the demo business's reviews
+   curl "http://localhost:3000/api/ratings?businessId=demo_abc_fire"
    ```
 
-3. **Look at the saved file:** [data/ratings.json](data/ratings.json). Git ignores it, so test ratings aren't committed. Delete it to start over.
-4. **Watch the server side:** the terminal running `pnpm dev` logs each request, for example `POST /api/ratings 201 in 12ms`. Add a `console.log(...)` inside `route.ts` and it prints there, not in the browser. That's how you can tell the code runs on the server.
+3. **Look at the saved rows:** run `pnpm db:studio` and open the **Rating** table. Run `pnpm db:seed` to reset the demo.
+4. **Watch the server side:** the terminal running `pnpm dev` logs each request, for example `POST /api/ratings 201 in 120ms`. Add a `console.log(...)` inside `route.ts` and it prints there, not in the browser. That's how you can tell the code runs on the server.
 
 **What it teaches:**
 - **Never trust the browser.** The form already limits stars to 1–5, but anyone can call the URL directly with `curl`. So the server checks every field itself and replies `400` with a clear `error` when something's wrong.
-- **Status codes carry meaning:** `201` saved, `400` your input is wrong, `200` here's what you asked for. The page uses `res.ok` to decide between showing the thank-you or the error.
-- **The page and server agree on a JSON shape.** That shape is the contract. Behind it, the storage can change without the page noticing.
+- **Status codes carry meaning:** `201` created, `200` OK, `400` your input is wrong, `404` not found, `409` not allowed in the job's current state. The page uses `res.ok` to decide between showing the thank-you or the error.
+- **Keep the checks apart from the database.** Plain functions are quick to test; database code is tested by running it.
 
-**Limits (it's an exploration, not the final design):**
-- **Storage is a JSON file**, so it works on one computer only. On Vercel the disk is read-only except `/tmp`, which is wiped regularly, so ratings on the live site don't last.
-- **Postgres replaces the file** in the data work this week. The URL and JSON shape stay the same, so the page won't need to change.
-- **Not linked to a job yet.** Real ratings will belong to an order, and only that order's customer can rate it.
+**History:** the first version saved ratings to a JSON file (`data/ratings.json`), which only worked on one computer and was wiped regularly on Vercel. It moved to Postgres on Oct 29. If you still have `data/ratings.json`, you can delete it.
 
 ## Live demo
 
@@ -399,8 +412,8 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [x] Prisma connected to Neon: first migration (`init`) on the `dev` branch
 - [x] Data model: Business, User (dispatcher, owner, technician), Customer, Order, OrderEvent, Rating ([prisma/schema.prisma](prisma/schema.prisma))
 - [x] Order state machine ([lib/orders/status.ts](lib/orders/status.ts)), with tests (`pnpm test`; see [Decisions](#order-workflow-who-can-change-a-jobs-status-decided-oct-29-2026))
-- [ ] Move ratings from `data/ratings.json` to the database
-- [ ] Apply migrations to `main` at the first deploy (`pnpm db:deploy`)
+- [x] Move ratings from `data/ratings.json` to the database, tied to a confirmed job; demo data with `pnpm db:seed`
+- [ ] Apply migrations and demo data to `main` at the first deploy (`pnpm db:deploy`, then `pnpm db:seed`). Until then, the live `/track/demo` page and ratings endpoint fail, because `main` has no tables yet
 - [ ] Customer request form that saves real orders
   - [ ] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
   - [ ] The final button says what happens next: "Send request. We'll find a business for you."

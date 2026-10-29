@@ -11,6 +11,6 @@ const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL?.repla
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  migrations: { path: "prisma/migrations" },
+  migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
   datasource: { url },
 });

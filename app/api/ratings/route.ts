@@ -1,39 +1,19 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { parseRating } from "@/lib/ratings/input";
+import { listReviews, rateOrder } from "@/lib/ratings/queries";
 
-// Exploration endpoint: ratings saved to a JSON file. Postgres replaces the file later; the
-// URL and the JSON stay the same.
-// Locally the file is data/ratings.json. Vercel's disk is read-only except /tmp,
-// which is wiped regularly, so ratings on the live site don't last.
-const FILE = process.env.VERCEL
-  ? "/tmp/ratings.json"
-  : path.join(process.cwd(), "data", "ratings.json");
+// Ratings, saved in Postgres. Each rating belongs to a confirmed job; the customer proves it's
+// theirs with the job's tracking token, the secret part of their tracking link.
 
-const MAX_COMMENT = 500;
-
-type Rating = { id: string; stars: number; comment: string; createdAt: string };
-
-async function load(): Promise<Rating[]> {
-  try {
-    return JSON.parse(await readFile(FILE, "utf8")) as Rating[];
-  } catch {
-    return []; // No file yet.
+/** GET /api/ratings?businessId=...: a business's reviews, newest first. */
+export async function GET(request: Request) {
+  const businessId = new URL(request.url).searchParams.get("businessId");
+  if (!businessId) {
+    return Response.json({ error: "Add ?businessId=... to the URL" }, { status: 400 });
   }
+  return Response.json({ ratings: await listReviews(businessId) });
 }
 
-async function save(ratings: Rating[]) {
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(ratings, null, 2));
-}
-
-/** GET /api/ratings: every saved rating, newest first. */
-export async function GET() {
-  const ratings = await load();
-  return Response.json({ ratings: ratings.reverse() });
-}
-
-/** POST /api/ratings with { "stars": 1-5, "comment": "optional" }: saves one rating. */
+/** POST /api/ratings with { "trackingToken": "...", "stars": 1-5, "comment": "optional" }. */
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -42,31 +22,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "Send the rating as JSON" }, { status: 400 });
   }
 
-  // Never trust what the browser sends: check every field.
-  const { stars, comment = "" } = (body ?? {}) as { stars?: unknown; comment?: unknown };
-  if (typeof stars !== "number" || !Number.isInteger(stars) || stars < 1 || stars > 5) {
-    return Response.json({ error: "stars must be a whole number from 1 to 5" }, { status: 400 });
-  }
-  if (typeof comment !== "string") {
-    return Response.json({ error: "comment must be text" }, { status: 400 });
-  }
-  if (comment.length > MAX_COMMENT) {
+  const parsed = parseRating(body);
+  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+
+  const result = await rateOrder(parsed.rating);
+  if (!result.ok) {
+    // 404: no job with that token. 409: the job isn't at a stage where it can be rated.
     return Response.json(
-      { error: `comment must be ${MAX_COMMENT} characters or fewer` },
-      { status: 400 },
+      { error: result.error },
+      { status: result.reason === "not_found" ? 404 : 409 },
     );
   }
 
-  const rating: Rating = {
-    id: `r_${randomUUID().slice(0, 8)}`,
-    stars,
-    comment: comment.trim(),
-    createdAt: new Date().toISOString(),
-  };
-  await save([...(await load()), rating]);
-
+  const { review, changed } = result;
   return Response.json(
-    { ...rating, message: `Thanks! Your ${stars}-star rating was saved.` },
-    { status: 201 },
+    {
+      ...review,
+      message: changed
+        ? `Thanks! Your rating was changed to ${review.stars} stars.`
+        : `Thanks! Your ${review.stars}-star rating was saved.`,
+    },
+    { status: changed ? 200 : 201 },
   );
 }

@@ -12,17 +12,23 @@ import { Fragment, useEffect, useState } from "react";
 type Review = { id: string; stars: number; comment: string; createdAt: string };
 
 /**
- * Every saved review, newest first, loaded from GET /api/ratings.
+ * A business's reviews, newest first, loaded from GET /api/ratings.
  * Change `refreshKey` to load the list again, for example after a new rating is sent.
  */
-export function ReviewList({ refreshKey = 0 }: { refreshKey?: number }) {
+export function ReviewList({
+  businessId,
+  refreshKey = 0,
+}: {
+  businessId: string;
+  refreshKey?: number;
+}) {
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     setError("");
-    fetch("/api/ratings")
+    fetch(`/api/ratings?businessId=${encodeURIComponent(businessId)}`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json() as Promise<{ ratings: Review[] }>;
@@ -32,7 +38,7 @@ export function ReviewList({ refreshKey = 0 }: { refreshKey?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [businessId, refreshKey]);
 
   if (error) return <Alert severity="error">{error}</Alert>;
 
