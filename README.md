@@ -93,7 +93,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 - **In Chrome on your laptop:** open DevTools (`Cmd+Option+I`), then turn on the device toolbar (`Cmd+Shift+M`) and pick an iPhone.
 - **On a real phone:** connect it to the same Wi-Fi as your laptop. Then open the `Network:` address that `pnpm dev` prints (like `http://192.168.x.x:3000`).
 
-**Other commands:** `pnpm typecheck`, `pnpm build`, `pnpm format`.
+**Other commands:** `pnpm test` (run the tests once; `pnpm test:watch` reruns them as you edit), `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
 **Database commands** (they use the `dev` branch from `.env.local`):
 
@@ -304,6 +304,37 @@ await db.select().from(orders).where(eq(orders.businessId, id)).orderBy(desc(ord
 
 **When to reconsider:** if Prisma's generated code or config gets in the way, or the team wants to work closer to SQL, move to **Drizzle**. The database and its data stay the same; only the code in `lib/` that queries it changes.
 
+### Order workflow: who can change a job's status (decided Oct 29, 2026)
+
+**Decision:** one set of rules in [lib/orders/status.ts](lib/orders/status.ts) decides which status changes are allowed and who may make them. It doesn't touch the database, so every page and API route uses the same rules, and [lib/orders/status.test.ts](lib/orders/status.test.ts) tests them (`pnpm test`, with Vitest).
+
+| Action | From | To | Who |
+|---|---|---|---|
+| Offer to business | New | Offered | Dispatcher (must choose a business) |
+| Withdraw offer | Offered | New | Dispatcher |
+| Accept | Offered | Accepted | Owner of that business |
+| Decline | Offered | New | Owner of that business (optional reason) |
+| Schedule visit | Accepted | Scheduled | Owner (must choose a technician from the business, or themselves, and a time) |
+| On my way | Scheduled | On the way | The assigned technician only |
+| Start work | On the way | In progress | The assigned technician only |
+| Done | In progress | Done | The assigned technician only |
+| Mark done | Scheduled, On the way or In progress | Done | Owner, if the technician forgot to update the job |
+| Confirm the work is done | Done | Confirmed | Customer, via the tracking link |
+| Report a problem | Done | Problem reported | Customer (must say what went wrong) |
+| Book a return visit | Problem reported | Scheduled | Owner |
+| Cancel job | New, Offered, Accepted, Scheduled or Problem reported | Cancelled | Dispatcher |
+
+**Rules behind the table:**
+- **Confirmed and Cancelled are final:** nothing moves out of them.
+- **Declining or withdrawing sends the job back to the dispatcher's queue** (New) and clears the business, so it can be offered to another.
+- **An owner only acts on their own business's jobs, and a technician only on jobs assigned to them.** This is the `businessId` rule applied to the workflow.
+- **Customers can't cancel yet.** The tracking page says to get in touch instead. Hiding the button is clearer than showing a disabled one that doesn't say why. Later, a per-business setting can turn it on.
+- **Mark done is the owner's override.** The job history records that the owner made the change, not the technician.
+- Changing the visit time or swapping the technician on a scheduled job is an edit, not a status change.
+- **The screens ask the rules which buttons to show** (`nextActions`), so they never show a button the server would refuse.
+
+**Next layer:** `lib/orders/transition.ts`, built with the pages that need it. It saves a change and its OrderEvent (the history entry) in one transaction. It only updates if the order is still at the status it was read at, so if two people tap Accept at once, one succeeds and the other is told the job was already accepted.
+
 ### CMS: Payload for marketing pages only, later (decided Oct 29, 2026)
 
 **Decision:** don't use a CMS for the app itself. Payload is a good fit later for **marketing pages, FAQs and help articles** that people who don't code need to edit.
@@ -367,7 +398,7 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [x] *You:* Neon connected to Vercel; `dev` branch created; `.env.local` with the pooled `DATABASE_URL` (no Docker)
 - [x] Prisma connected to Neon: first migration (`init`) on the `dev` branch
 - [x] Data model: Business, User (dispatcher, owner, technician), Customer, Order, OrderEvent, Rating ([prisma/schema.prisma](prisma/schema.prisma))
-- [ ] Order state machine (`lib/orders/status.ts`), with tests
+- [x] Order state machine ([lib/orders/status.ts](lib/orders/status.ts)), with tests (`pnpm test`; see [Decisions](#order-workflow-who-can-change-a-jobs-status-decided-oct-29-2026))
 - [ ] Move ratings from `data/ratings.json` to the database
 - [ ] Apply migrations to `main` at the first deploy (`pnpm db:deploy`)
 - [ ] Customer request form that saves real orders
@@ -396,6 +427,10 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Customer confirms the work is done, or reports a problem
 - [ ] Rating appears on the tracking page after the customer confirms, and is saved; the owner sees the stars on the job
 - [ ] Demo switch for the rating shows only in demo mode, as a backup; remove the `/track/demo` sample page
+- [ ] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes
+  - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
+  - [ ] Checks the tracking page shows each step, and each person sees only their own buttons
+  - [ ] Runs against the `dev` database and deletes the test job afterwards
 - [ ] **First production deploy** (Vercel + Neon)
   - [ ] Check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
 - [ ] *You:* test the live link on your phone
@@ -407,6 +442,10 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Spending limit on the API key; password-protect the demo link
 - [ ] Bug fixes
 - [ ] *You:* full run-through
+  - [ ] Every screen is readable on a phone without zooming
+  - [ ] Each person knows what to tap next, without being told
+  - [ ] The customer understands the tracking page without anyone explaining it
+  - [ ] It still works on a phone hotspot
 
 **Sun Nov 1: Freeze and rehearse**
 - [ ] Code freeze at noon; only fixes after that
@@ -431,6 +470,7 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Automatic dispatch for routine jobs: send the top suggestion without approval, with offer timeouts and fallback to the next business. The dispatcher still handles exceptions, and the approval mode stays available
 - [ ] Learn from dispatcher overrides: when the dispatcher picks a business other than the suggestion, record why and tune the scoring
 - [ ] Text message notifications
+- [ ] Customers can cancel before the visit, if the business turns it on in its settings
 - [ ] Technician view: route for the day, customer contact, checklists
 - [ ] Real-time tracking: the customer's tracking page and the owner's map update live as technicians move and change status
   - [ ] First step: refresh the tracking page every 30 seconds (no new service needed)

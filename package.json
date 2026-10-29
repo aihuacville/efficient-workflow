@@ -15,7 +15,9 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -38,12 +40,16 @@
     "@types/react-dom": "^19.3.0",
     "prettier": "^3.9.10",
     "prisma": "7.10.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "3.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/engines",
       "prisma"
+    ],
+    "ignoredBuiltDependencies": [
+      "esbuild"
     ]
   }
 }
