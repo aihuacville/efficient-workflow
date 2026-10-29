@@ -85,7 +85,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | Page | What it shows |
 |---|---|
 | `/` | Customer landing page |
-| `/request` | Customer request form (placeholder until Wednesday) |
+| `/request` | Customer request form: photo, details, contact info; saves a real order and shows its tracking link |
 | `/dispatch` | Dispatcher queue (sample data for now) |
 | `/jobs` | Business owner's job offers |
 | `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
@@ -93,6 +93,11 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 **To check the phone layout:**
 - **In Chrome on your laptop:** open DevTools (`Cmd+Option+I`), then turn on the device toolbar (`Cmd+Shift+M`) and pick an iPhone.
 - **On a real phone:** connect it to the same Wi-Fi as your laptop. Then open the `Network:` address that `pnpm dev` prints (like `http://192.168.x.x:3000`).
+
+**To try the request form:**
+1. Open `/request` (on a phone, use the `Network:` address). Try tapping **Next** with empty fields, a phone number with too few digits, and **Back**: your answers stay.
+2. Send it. **Copy link** copies the tracking link. On a phone over Wi-Fi it selects the link instead ("Press and hold the link to copy it"), because the clipboard only works over https or on localhost.
+3. See what was saved: run `pnpm db:studio` and open **Order** (status `NEW`, with its tracking token), **Customer**, and **OrderEvent** (one "Request received" entry, `toStatus: NEW`). Delete test rows there if you like: deleting an order also deletes its events, but delete the customer separately. If you delete the ABC Fire Safety demo rows, `pnpm db:seed` puts them back.
 
 **Other commands:** `pnpm test` (run the tests once; `pnpm test:watch` reruns them as you edit), `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
@@ -414,13 +419,14 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [x] Order state machine ([lib/orders/status.ts](lib/orders/status.ts)), with tests (`pnpm test`; see [Decisions](#order-workflow-who-can-change-a-jobs-status-decided-oct-29-2026))
 - [x] Move ratings from `data/ratings.json` to the database, tied to a confirmed job; demo data with `pnpm db:seed`
 - [ ] Apply migrations and demo data to `main` at the first deploy (`pnpm db:deploy`, then `pnpm db:seed`). Until then, the live `/track/demo` page and ratings endpoint fail, because `main` has no tables yet
-- [ ] Customer request form that saves real orders
-  - [ ] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
-  - [ ] The final button says what happens next: "Send request. We'll find a business for you."
+- [x] Customer request form that saves real orders ([RequestForm.tsx](app/(public)/request/RequestForm.tsx), `POST /api/orders`; field rules in [lib/orders/request.ts](lib/orders/request.ts), tested)
+  - [x] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
+  - [x] The final button says what happens next: "Send request. We'll find a business for you."
+  - [x] Photo step: take or choose a photo and see it; not uploaded yet (AI autofill reads it on Thursday; storing photos is a pilot task)
 - [ ] Customer tracking page
   - [ ] Status timeline: Request received → Business assigned → Visit scheduled → Technician on the way → Work done → You confirm
   - [ ] Each step shows its date, plus the business name and visit time once known; the current step is highlighted
-- [ ] After submitting: show the tracking link with a **Copy link** button and "Save this link to check progress" (no sign-in for customers, and no email until the pilot)
+- [x] After submitting: show the tracking link with a **Copy link** button and "Save this link to check progress" (no sign-in for customers, and no email until the pilot)
 - [ ] *You:* review the phone screens
 
 **Thu Oct 29: AI autofill and dispatch**
