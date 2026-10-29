@@ -50,6 +50,18 @@ The layout differs a lot by role, but it stays one app. A dispatcher's queue can
 
 **Next.js + Material UI (MUI).** MUI's breakpoints and responsive props handle the layout changes, for example `sx={{ display: { xs: "none", md: "block" } }}` and `Stack direction={{ xs: "column", sm: "row" }}`. Next.js supports a PWA manifest natively (`app/manifest.ts`).
 
+**One Next.js app, at the repo root.** The website and the server code (API endpoints, form handling, permission checks, the AI call) live in the same app, and Vercel hosts both. Other needs plug in as services rather than separate servers: Postgres (Neon) for data, and later sign-in, email and text messages, photo storage, error alerts and background jobs. See [Decisions](#decisions).
+
+**Folder layout:**
+
+| Folder | What's in it |
+|---|---|
+| `app/` | Pages and API endpoints. `(public)` holds customer pages; `(app)` holds dispatcher, owner and technician pages inside the app shell; `api/` holds server endpoints |
+| `components/` | Shared UI: app shell, page header, table-or-cards list, rating, reviews |
+| `theme/` | MUI theme: colors, breakpoints, touch-target sizes |
+| `lib/` | Server and business logic as it arrives, one folder per area (for example `lib/orders/`, `lib/dispatch/`), so any area could become its own package later |
+| `docs/` | QR codes and other project files |
+
 ## Run locally
 
 You need Node 22 or newer (check with `node -v`). From the repo root:
@@ -80,7 +92,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 
 A small, self-contained example of server-side code, added to explore how the backend works. The rating on `/track/demo` sends each rating to the server, which checks it, saves it and replies with JSON.
 
-**Where the code is:** [app/api/ratings/route.ts](apps/web/app/api/ratings/route.ts). In Next.js, a `route.ts` file inside `app/api/` is a **Route Handler**: server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
+**Where the code is:** [app/api/ratings/route.ts](app/api/ratings/route.ts). In Next.js, a `route.ts` file inside `app/api/` is a **Route Handler**: server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
 
 **The flow:**
 
@@ -107,7 +119,7 @@ Phone: shows "Thanks! Your 4-star rating was saved." (the server's message)
 
 **Try it** (with `pnpm dev` running):
 
-1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears: the page calls `GET /api/ratings` and shows every review, newest first, with the average ([ReviewList.tsx](apps/web/components/ReviewList.tsx)). Open http://localhost:3000/api/ratings to see the same data as raw JSON.
+1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears: the page calls `GET /api/ratings` and shows every review, newest first, with the average ([ReviewList.tsx](components/ReviewList.tsx)). Open http://localhost:3000/api/ratings to see the same data as raw JSON.
 2. **From the terminal, with no browser.** `curl` sends a request directly:
 
    ```bash
@@ -125,7 +137,7 @@ Phone: shows "Thanks! Your 4-star rating was saved." (the server's message)
    curl http://localhost:3000/api/ratings
    ```
 
-3. **Look at the saved file:** [apps/web/data/ratings.json](apps/web/data/ratings.json). Git ignores it, so test ratings aren't committed. Delete it to start over.
+3. **Look at the saved file:** [data/ratings.json](data/ratings.json). Git ignores it, so test ratings aren't committed. Delete it to start over.
 4. **Watch the server side:** the terminal running `pnpm dev` logs each request, for example `POST /api/ratings 201 in 12ms`. Add a `console.log(...)` inside `route.ts` and it prints there, not in the browser. That's how you can tell the code runs on the server.
 
 **What it teaches:**
@@ -161,7 +173,7 @@ npx qrcode@1.5.4 -w 1024 -m 2 -e M -o docs/qr/name.png "https://workflow.aihuach
 
 ### Styling: keep MUI + Emotion for the demo (decided Oct 27, 2026)
 
-**Decision:** use MUI with its built-in styling (Emotion) for the demo MVP. Style only through the theme ([theme.ts](apps/web/theme/theme.ts)) and `sx` props, with no separate stylesheets. Look at this again after the demo.
+**Decision:** use MUI with its built-in styling (Emotion) for the demo MVP. Style only through the theme ([theme.ts](theme/theme.ts)) and `sx` props, with no separate stylesheets. Look at this again after the demo.
 
 **What it costs.** From a production build on Oct 27. The figures are the compressed JavaScript a phone downloads on its first visit:
 
@@ -188,6 +200,45 @@ The 103 kB baseline is the same with any CSS approach, so a switch would save on
 - The main performance risk is the customer pages on mobile data, and those are already the smallest pages.
 
 **When to reconsider:** after the demo, if testing on a mid-range phone shows the customer pages feel slow. Then move only those pages (`/`, `/request`, the tracking page) to plain CSS or Tailwind, and keep MUI for the dispatcher and owner screens. No full rewrite is needed. Styling only through the theme and `sx` keeps that move manageable.
+
+### Repo structure: a single Next.js app, no monorepo (decided Oct 29, 2026)
+
+**Decision:** flatten the repo from a pnpm + Turborepo monorepo (`apps/web`, `packages/config`) to one Next.js app at the root.
+
+**Why:**
+- The monorepo had one app and one small package that only held TypeScript settings, so Turborepo was coordinating one thing.
+- One app means one `package.json`, one `tsconfig.json`, default Vercel settings, and `pnpm add x` with no decision about where a library belongs.
+- It's easier to understand for a small team, and cheaper to change now than after the database code lands.
+
+**Is Next.js enough for the real product?** Yes. The example checked: 100 lawn care businesses, each with 10 workers and 20 clients, comes to about 3,100 users. With weekly visits, that's about 8,000 jobs a month (~300 a day) and a few tens of thousands of requests a day, a small fraction of what Next.js on Vercel handles. What matters at that size:
+- **Neon's pooled connection,** because many short-lived server functions each open a database connection.
+- **One shared app for all businesses:** every row records which business it belongs to, and every query checks it. This goes into the data model from the start.
+- **Photos in file storage** (Vercel Blob or Cloudflare R2), not in the database.
+- **Text message costs,** which outgrow hosting and database costs combined.
+
+**When to reconsider:**
+- **A native iPhone or Android app,** or a separate background worker that shares code with the website. Then a monorepo (and Turborepo) earns its place again.
+- **Live GPS tracking of many workers on a map** needs a real-time service (Pusher, Ably, or Supabase Realtime), because Vercel can't hold open live connections. A tracking page that refreshes every 30 seconds needs nothing extra.
+
+Keeping business logic in `lib/<area>/` folders means any area can become a package later without a rewrite.
+
+### Database: Neon for the demo; consider Supabase for the pilot (decided Oct 29, 2026)
+
+Both are hosted Postgres, and the app talks to the database only through Prisma, so switching means changing a connection string and copying the data.
+- **Neon** is just Postgres: built into Vercel, with database copies per branch and close to free when idle. It's already set up, and the demo needs nothing more.
+- **Supabase** is Postgres plus sign-in, file storage and live updates in one product. That could save a small team work in the pilot. The cost is more lock-in if the app builds on those extras.
+
+Decide after the demo, based on how soon the pilot needs sign-in, photos and live updates.
+
+### CMS: Payload for marketing pages only, later (decided Oct 29, 2026)
+
+**Decision:** don't use a CMS for the app itself. Payload is a good fit later for **marketing pages, FAQs and help articles** that people who don't code need to edit.
+
+**Why not for the app:**
+- The app's hard parts are workflow: the order state machine, dispatch scoring, offers, scheduling and permissions. A CMS is built for editing content, so it wouldn't help with those.
+- Payload creates and manages its own database tables, and Prisma already owns the app's tables. With two tools defining the same database, migrations get confusing.
+
+**When added:** keep Payload's content apart from order data, either in separate tables or in a separate small marketing site.
 
 ## Build plan
 
@@ -251,6 +302,8 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] *You:* review the phone screens
 
 **Thu Oct 29: AI autofill and dispatch**
+- [x] Flatten the repo to a single Next.js app (see [Decisions](#repo-structure-a-single-nextjs-app-no-monorepo-decided-oct-29-2026))
+- [ ] *You:* in Vercel, set **Settings → Build and Deployment → Root Directory** back to empty (it was `apps/web`)
 - [ ] AI autofill from a photo of the notice
 - [ ] Dispatcher page: queue of new requests, offer a job to a business, cancel
 - [ ] Suggested business for each request (human in the loop)
@@ -300,6 +353,10 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Learn from dispatcher overrides: when the dispatcher picks a business other than the suggestion, record why and tune the scoring
 - [ ] Text message notifications
 - [ ] Technician view: route for the day, customer contact, checklists
+- [ ] Real-time tracking: the customer's tracking page and the owner's map update live as technicians move and change status
+  - [ ] First step: refresh the tracking page every 30 seconds (no new service needed)
+  - [ ] Then live updates and GPS positions through a real-time service (Pusher, Ably or Supabase Realtime), sending location only while a technician is on the way, with their consent
+- [ ] Payload CMS for marketing pages, FAQs and help articles, kept apart from order data (see [Decisions](#cms-payload-for-marketing-pages-only-later-decided-oct-29-2026))
 - [ ] PWA: installable app, offline job list for technicians, push notifications
 - [ ] Passkey sign-in
 - [ ] Google Sheets sync for owners

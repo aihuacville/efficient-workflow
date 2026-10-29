@@ -4,7 +4,7 @@ import path from "node:path";
 
 // Exploration endpoint: ratings saved to a JSON file. Postgres replaces the file later; the
 // URL and the JSON stay the same.
-// Locally the file is apps/web/data/ratings.json. Vercel's disk is read-only except /tmp,
+// Locally the file is data/ratings.json. Vercel's disk is read-only except /tmp,
 // which is wiped regularly, so ratings on the live site don't last.
 const FILE = process.env.VERCEL
   ? "/tmp/ratings.json"

@@ -1,6 +1,5 @@
 node_modules/
 .next/
-.turbo/
 dist/
 coverage/
 .env
@@ -14,4 +13,4 @@ storybook-static/
 *.tsbuildinfo
 
 # Local exploration data (ratings.json)
-apps/web/data/
+data/
