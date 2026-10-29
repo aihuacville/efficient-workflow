@@ -64,7 +64,13 @@ The layout differs a lot by role, but it stays one app. A dispatcher's queue can
 
 ## Run locally
 
-You need Node 22 or newer (check with `node -v`). From the repo root:
+You need Node 22 or newer (check with `node -v`).
+
+**Database connection (once per laptop).** Local development uses the Neon **`dev` branch**, never the live database. No Docker needed.
+1. In the Neon console, open the project → **Branches** → **`dev`** → **Connect**, and copy the **pooled** connection string (its host contains `-pooler`).
+2. Create `.env.local` at the repo root with `DATABASE_URL="<that string>"`. Git ignores this file. Never commit it or paste it into chat, because it contains the password.
+
+Then, from the repo root:
 
 ```bash
 corepack enable   # first time only: gives you the pnpm version the repo pins
@@ -230,6 +236,24 @@ Both are hosted Postgres, and the app talks to the database only through Prisma,
 
 Decide after the demo, based on how soon the pilot needs sign-in, photos and live updates.
 
+### Local database: a Neon `dev` branch instead of Docker (decided Oct 29, 2026)
+
+**Decision:** develop against a **`dev` branch** of the Neon project, not a Postgres container in Docker Desktop.
+
+```
+Neon project
+ ├─ main branch  ← Vercel / workflow.aihuachen.com
+ └─ dev branch   ← your laptop's `pnpm dev`, via DATABASE_URL in .env.local
+```
+
+**Why:**
+- **Nothing to install or keep running.** In the earlier build, Docker caused trouble: the PostGIS image had no build for Apple-chip Macs, and the database got extensions Prisma didn't expect.
+- **The same Postgres version and settings** in development and live, so there are no "works on my laptop" surprises.
+- **Still separate from live data:** a bad migration or a test script that deletes rows only touches `dev`. The `dev` branch can be reset from `main` at any time.
+- **Free:** branches are included in Neon's free plan.
+
+**Trade-offs:** development needs internet, and each query is a few milliseconds slower than a local database. Automated tests that need a database can use their own Neon branch, or a local Postgres if that becomes a problem.
+
 ### CMS: Payload for marketing pages only, later (decided Oct 29, 2026)
 
 **Decision:** don't use a CMS for the app itself. Payload is a good fit later for **marketing pages, FAQs and help articles** that people who don't code need to edit.
@@ -290,7 +314,8 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [x] *You:* create accounts and sign in: GitHub, Vercel, Neon (hosted Postgres), Anthropic API key
 
 **Wed Oct 28: Data and customer flow**
-- [ ] Postgres + Prisma, local setup with Docker
+- [x] *You:* Neon connected to Vercel; `dev` branch created; `.env.local` with the pooled `DATABASE_URL` (no Docker)
+- [ ] Prisma connected to Neon: first migration on the `dev` branch, then `main` at deploy time
 - [ ] Data model and order state machine, with tests
 - [ ] Customer request form that saves real orders
   - [ ] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
@@ -319,6 +344,7 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Rating appears on the tracking page after the customer confirms, and is saved; the owner sees the stars on the job
 - [ ] Demo switch for the rating shows only in demo mode, as a backup; remove the `/track/demo` sample page
 - [ ] **First production deploy** (Vercel + Neon)
+  - [ ] Check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
 - [ ] *You:* test the live link on your phone
 
 **Sat Oct 31: Polish**
