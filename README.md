@@ -114,7 +114,7 @@ There are no per-person passwords: the switcher sets a cookie saying who you are
 2. Send it. **Copy link** copies the tracking link. On a phone over Wi-Fi it selects the link instead ("Press and hold the link to copy it"), because the clipboard only works over https or on localhost.
 3. See what was saved: run `pnpm db:studio` and open **Order** (status `NEW`, with its tracking token), **Customer**, and **OrderEvent** (one "Request received" entry, `toStatus: NEW`). Delete test rows there if you like: deleting an order also deletes its events, but delete the customer separately. If you delete the ABC Fire Safety demo rows, `pnpm db:seed` puts them back.
 
-**Other commands:** `pnpm test` (run the tests once; `pnpm test:watch` reruns them as you edit), `pnpm test:e2e` (the whole job in real Chrome at phone and laptop sizes, about 2 minutes; starts the dev server if needed, and `pnpm exec playwright test --ui` lets you watch it step by step), `pnpm typecheck`, `pnpm build`, `pnpm format`.
+**Other commands:** `pnpm test` (run the unit tests once; `pnpm test:watch` reruns them as you edit), `pnpm test:e2e` (end-to-end tests, see [below](#end-to-end-tests-playwright)), `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
 **Database commands** (they use the `dev` branch from `.env.local`):
 
@@ -147,6 +147,104 @@ There are no per-person passwords: the switcher sets a cookie saying who you are
 All three commands use `DATABASE_URL_UNPOOLED` when it's set, and a variable typed on the command line wins over `.env.local`, so they go to `main`, not `dev`. Never paste the string into chat or commit it.
 
 `pnpm install` also runs `prisma generate`, which rebuilds the typed client in `lib/generated/` from the schema.
+
+## End-to-end tests (Playwright)
+
+The unit tests (`pnpm test`, with Vitest) check the rules on their own, in under a second. The **end-to-end test** checks the whole app the way people use it: [Playwright](https://playwright.dev) opens real Chrome windows and clicks through the demo script, once at phone size and once at laptop size.
+
+**What it does** ([e2e/full-job.e2e.ts](e2e/full-job.e2e.ts)):
+1. **Customer** sends a request through the form and opens the tracking page.
+2. **Dispatcher** (Dana) offers it to ABC Fire Safety.
+3. **Owner** (Omar) accepts it and schedules Alex.
+4. **Technician** (Alex) taps On my way, Start work, Done.
+5. **Customer** confirms the work is done and gives 5 stars.
+
+Each person gets their own browser window, as if on their own device. Along the way it checks:
+- each person sees only their own buttons (for example, Alex has no Accept)
+- the owner sees no customer details or tracking link on an offer
+- the tracking page shows the right step
+- the job's history records the right person at each step
+
+**Commands:**
+
+| Command | What you see |
+|---|---|
+| `pnpm test:e2e` | Nothing on screen: Chrome runs **headless** (invisibly) and the terminal prints ✓ or ✘ for phone and laptop. About 2 minutes. Use it to check nothing broke |
+| `pnpm exec playwright test --headed --project=laptop` | **Real Chrome windows** open and click through the whole job, about 25 seconds. The best way to see it working. Use `--project=phone` for the phone-sized run |
+| `pnpm exec playwright test --ui` | A Playwright window with the test list. Press **▶** to run, then click any step to see the page at that moment |
+| `pnpm exec playwright show-report` | After a run: a report in your browser with each step and how long it took. When a test fails, it also has a trace to replay |
+
+**Good to know:**
+- **It starts the dev server itself** if one isn't already running on port 3000, so the first run takes about 30 seconds longer while pages compile.
+- **It uses the `dev` database** from `.env.local`. Each run creates a job with its own unique address (for example `1761868800000 laptop Test Ave`) and deletes it afterwards, so it never touches other data.
+- **It uses the Chrome installed on your computer**, so there's no browser to download. The phone run emulates a Pixel 7 screen and touch. Adding Safari's engine (WebKit) is one line in [playwright.config.ts](playwright.config.ts) plus `pnpm exec playwright install webkit`.
+- **The `SECURITY WARNING` about SSL modes** printed by `[WebServer]` is harmless. It comes from the Postgres library about a future change; to silence it, change `sslmode=require` to `sslmode=verify-full` in your `.env.local`.
+- **Test files end in `.e2e.ts`,** so `pnpm test` (Vitest) skips them. Database steps run through [e2e/db.ts](e2e/db.ts) with tsx, because Playwright's loader can't load Prisma's generated client.
+- **If a test fails,** the terminal shows which step and why. Run `pnpm exec playwright show-report` to see the page at the moment it failed.
+
+**When to run it:** before pushing anything that changes a page or the workflow, and before each run-through. Later it runs automatically on every push (the GitHub Actions item in the pilot list).
+
+## Demo run-through
+
+A **run-through** is a practice of the whole demo by you, from start to finish, as if presenting on Monday: real phones and the laptop, on the live site. It's on the plan twice: Saturday's **full run-through** (find what's confusing or broken while there's time to fix it) and Sunday's **final rehearsal** (the same after the noon freeze, timed, with your talk track).
+
+| | End-to-end test (`pnpm test:e2e`) | Run-through |
+|---|---|---|
+| **Who does it** | Playwright, automatically | You, by hand |
+| **Where** | Your laptop, against `dev` | Real phones and the laptop, against the live site |
+| **Answers** | "Does the flow still work?" | "Does it make sense to a person, and does the demo go smoothly?" |
+| **When** | Before pushing changes | Saturday evening, and Sunday as the final rehearsal |
+
+Run the automated test first, so a practice isn't wasted on something a test would have caught.
+
+### Before you start (about 10 minutes)
+
+- [ ] `pnpm test:e2e` passes on your laptop
+- [ ] Reset the live data so the demo starts clean: `DATABASE_URL_UNPOOLED="$MAIN_URL" pnpm db:reset-demo` (see "Updating the live database" in [Run locally](#run-locally))
+- [ ] Wake the database: open https://workflow.aihuachen.com and `/dispatch` once (Neon's free plan pauses it after about 5 idle minutes, and the first request is slow)
+- [ ] Devices ready, charged, brightness up, notifications off:
+  - **Phone 1, the customer:** the QR code from [docs/qr/](docs/qr/) printed or on another screen
+  - **Phone 2, the technician:** open `/jobs`, enter the demo password, and switch to **Alex Kim**
+  - **Laptop, the dispatcher and owner:** open `/dispatch`, enter the demo password, and switch to **Dana Lee**
+- [ ] A phone hotspot ready, in case the venue Wi-Fi is bad
+- [ ] A timer running, and somewhere to write notes
+
+### The run (about 10 minutes)
+
+| # | Who, where | Do | You should see |
+|---|---|---|---|
+| 1 | Customer, phone 1 | Scan the QR code, tap **Start a request**, add a photo, check the details, enter a name and phone, tap **Send request** | "Request sent", the tracking link, **Copy link** |
+| 2 | Customer, phone 1 | Tap **Open tracking page** and leave it open | "Request received" done; "Business assigned" highlighted with "We're finding a qualified business" |
+| 3 | Dispatcher, laptop (Dana) | The request appears in **New requests** within 30 seconds. Tap **Offer to business** | The dialog suggests ABC Fire Safety ("Offers fire safety inspection") |
+| 4 | Dispatcher, laptop | Tap **Offer to ABC Fire Safety** | The job moves to **Waiting for a business** |
+| 5 | Owner, laptop (switch to Omar) | On the offer: no customer name or phone yet. Tap **Accept** | The job moves to **To schedule**, now with the customer's name and phone |
+| 6 | Owner, laptop | Tap **Schedule visit**, keep **Alex Kim**, pick a time, tap **Schedule** | The job moves to **Scheduled** with Alex and the visit time |
+| 7 | Customer, phone 1 | Wait up to 30 seconds (no reload) | "Business assigned" and "Visit scheduled" done, with the visit time and "with Alex" |
+| 8 | Technician, phone 2 (Alex) | The visit appears under **Upcoming**. Show the address (opens maps) and **Call** link. Tap **On my way** | The card moves to **Now**; the button becomes **Start work** |
+| 9 | Customer, phone 1 | Wait up to 30 seconds | "Technician on the way" done |
+| 10 | Technician, phone 2 | Tap **Start work**, then **Done** | The card leaves the list |
+| 11 | Customer, phone 1 | Wait up to 30 seconds | "Work done", and **Is the work done?** |
+| 12 | Customer, phone 1 | Tap **Yes, the work is done**, pick 5 stars, add a comment, tap **Send rating** | Every step ticked; "Thanks! Your 5-star rating was saved." |
+| 13 | Owner, laptop (Omar) | Open **My jobs** | The job under **Finished** with 5 stars |
+
+**Optional extras, if there's time in the demo:**
+- [ ] **Decline:** as Omar, decline a second request with a reason; as Dana, see "Declined by ABC Fire Safety: …" and offer it to GreenLeaf (Grace)
+- [ ] **Problem:** on a done job, the customer taps **Report a problem**; Omar sees the note and **Book a return visit**
+- [ ] **Lost link:** on phone 1, go to the home page and show **Your requests**; on the laptop, show Dana's **Copy link**
+
+### What to check while you go
+
+- [ ] Every screen is readable on a phone without zooming
+- [ ] Each person knows what to tap next, without being told
+- [ ] The customer understands the tracking page without anyone explaining it
+- [ ] Nothing takes more than a couple of seconds after a tap
+- [ ] It still works on a phone hotspot (run steps 1 to 4 again on the hotspot)
+- [ ] The whole run fits in your time slot, with your talk track
+
+### After each run
+
+- Write down anything that was slow, unclear or broken, with the step number. That list is Sunday morning's polish.
+- Reset the live data again before the next run (or before the demo).
 
 ## Exploring the server: the ratings endpoint
 
@@ -575,7 +673,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [x] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later; done Oct 30)
   - [x] Staff pages refresh too, so new requests and offers appear without reloading. Refreshes pause while the tab is hidden, keep anything being typed, and stop once a job is confirmed or cancelled ([AutoRefresh.tsx](components/AutoRefresh.tsx))
 - [ ] Friendly error and loading pages: a branded 404, a "something went wrong, try again" page, and loading placeholders on staff pages *(cut first if short of time, after AI autofill and scoring)*
-- [ ] *You:* full run-through
+- [ ] *You:* full run-through, following the steps in [Demo run-through](#demo-run-through)
   - [ ] Every screen is readable on a phone without zooming
   - [ ] Each person knows what to tap next, without being told
   - [ ] The customer understands the tracking page without anyone explaining it
@@ -586,7 +684,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [x] QR code that opens the request page ([docs/qr/](docs/qr/))
 - [ ] Code freeze at noon; only fixes after that
 - [ ] Before rehearsing and before presenting: reset the demo data on `main`, then open each page once to wake the database (Neon's free plan pauses it after about 5 idle minutes)
-- [ ] Final rehearsal on a real phone and laptop: customer on one phone, technician on a second phone, owner and dispatcher on the laptop
+- [ ] Final rehearsal on a real phone and laptop: customer on one phone, technician on a second phone, owner and dispatcher on the laptop, following [Demo run-through](#demo-run-through), timed and with your talk track
 - [ ] Record a screen video of the full flow as a backup
 - [ ] *You:* slides, and a phone hotspot in case the Wi-Fi is bad
 
