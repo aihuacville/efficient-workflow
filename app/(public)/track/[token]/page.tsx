@@ -9,6 +9,7 @@ import Stepper from "@mui/material/Stepper";
 import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CustomerConfirm } from "@/components/CustomerConfirm";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { OrderRating } from "@/components/OrderRating";
 import type { OrderStatus } from "@/lib/generated/prisma/enums";
@@ -33,7 +34,7 @@ function currentHint(status: OrderStatus, businessName: string) {
     case "IN_PROGRESS":
       return "The work is in progress.";
     case "DONE":
-      return "Check the work. Soon you'll be able to confirm it here.";
+      return "Check the work, then confirm it below, or tell us about a problem.";
     default:
       return "";
   }
@@ -121,6 +122,10 @@ export default async function TrackPage({ params }: { params: Promise<{ token: s
               })}
             </Stepper>
           </Paper>
+        )}
+
+        {order.status === "DONE" && (
+          <CustomerConfirm trackingToken={order.trackingToken} businessName={businessName} />
         )}
 
         {order.status === "CONFIRMED" && order.business && (

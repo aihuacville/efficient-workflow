@@ -1,3 +1,4 @@
+import { REFUSAL_STATUS } from "@/lib/orders/http";
 import { type Action, ACTIONS } from "@/lib/orders/status";
 import { type ActionRequest, applyAction } from "@/lib/orders/transition";
 import { getCurrentUser, toActor } from "@/lib/session";
@@ -5,14 +6,6 @@ import { getCurrentUser, toActor } from "@/lib/session";
 // Every staff button that moves a job (Offer, Accept, On my way, ...) calls this. The workflow
 // rules decide whether the signed-in person may do it; this file only reads the request and
 // turns the answer into a status code.
-
-const STATUS_CODES = {
-  input: 400,
-  person: 403,
-  not_found: 404,
-  status: 409,
-  conflict: 409,
-} as const;
 
 /**
  * POST /api/orders/<id>/actions with { "action": "offer", ...details }.
@@ -59,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     details,
   );
   if (!result.ok) {
-    return Response.json({ error: result.error }, { status: STATUS_CODES[result.reason] });
+    return Response.json({ error: result.error }, { status: REFUSAL_STATUS[result.reason] });
   }
   return Response.json({ status: result.status });
 }

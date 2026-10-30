@@ -532,7 +532,9 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 
 **Sat Oct 31: Technician and customer, then the extras**
 - [ ] Technician page (phone): today's jobs; On my way → Start work → Done; optional photo of the finished work
-- [ ] Customer confirms the work is done, or reports a problem, on the tracking page
+- [x] Customer confirms the work is done, or reports a problem, on the tracking page (done Oct 30)
+  - [x] "Is the work done?" appears once the job is done: **Yes, the work is done** shows the rating straight away; **Report a problem** asks what went wrong, and the owner sees it with **Book a return visit**
+  - [x] Customers act through `POST /api/track/<token>/actions` ([route.ts](app/api/track/[token]/actions/route.ts)): the tracking token proves it's their job, and only confirm and report a problem are accepted
 - [x] Rating after the customer confirms
   - [x] Tracking page shows the rating form once confirmed, and the customer's rating after (done Oct 29)
   - [x] Owner sees the stars on the job (Finished section of the owner page, done Oct 30)
@@ -547,6 +549,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
   - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
+  - [ ] Show each business's rating in the offer dialog, for example "ABC Fire Safety ★ 4.7 (12 reviews)", using the same reviews as the review list. Also worth showing on the owner's page as feedback (their own average)
 - [ ] AI autofill from a photo of the notice *(cut first if short of time)*
 - [ ] *You:* find 2–3 real notice photos for the demo
 - [ ] Demo data: a few jobs at different stages, so every page has something to show
