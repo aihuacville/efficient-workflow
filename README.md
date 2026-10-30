@@ -87,7 +87,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | `/` | Customer landing page |
 | `/request` | Customer request form: photo, details, contact info; saves a real order and shows its tracking link |
 | `/dispatch` | Dispatcher page (as Dana Lee): new requests, offers waiting for a business, jobs in progress; offer, withdraw, cancel |
-| `/jobs` | Business owner's job offers |
+| `/jobs` | As an owner (Omar, Grace): offers, jobs to schedule, scheduled visits, jobs waiting for the customer, finished jobs with stars. As a technician (Alex, Jordan, Chris): their visits, with On my way → Start work → Done |
 | `/track/<link>` | A customer's tracking page: timeline, business and visit time, and the rating once they've confirmed. Send a request at `/request` to get a link |
 | `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
 
@@ -460,7 +460,10 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [x] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
   - [x] One API for every staff button: `POST /api/orders/<id>/actions` ([route.ts](app/api/orders/[id]/actions/route.ts)), with status codes from the workflow rules (401 no account, 403 not allowed, 409 wrong stage or changed by someone else, 400 missing details, 404 no such job)
   - [x] Buttons come from the rules (`nextActions`); Cancel and Withdraw ask first; the offer dialog lists businesses that offer the service first
-- [ ] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets
+- [x] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets
+  - [x] Only the owner's own business's jobs (filtered by `businessId`); customer contact details appear only after accepting
+  - [x] Decline asks for an optional reason, saved in the job's history; Book a return visit after a problem
+  - [x] Technicians get a basic list of their visits on the same page (the phone-first version is Saturday's)
 - [ ] **First production deploy** (Vercel + Neon)
   - [ ] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
   - [ ] Apply migrations and demo data to `main` (`pnpm db:deploy`, then `pnpm db:seed`), without the password going through chat
@@ -470,13 +473,14 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 **Sat Oct 31: Technician and customer, then the extras**
 - [ ] Technician page (phone): today's jobs; On my way → Start work → Done; optional photo of the finished work
 - [ ] Customer confirms the work is done, or reports a problem, on the tracking page
-- [ ] Rating after the customer confirms
+- [x] Rating after the customer confirms
   - [x] Tracking page shows the rating form once confirmed, and the customer's rating after (done Oct 29)
-  - [ ] Owner sees the stars on the job
+  - [x] Owner sees the stars on the job (Finished section of the owner page, done Oct 30)
 - [ ] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes
   - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
   - [ ] Checks the tracking page shows each step, and each person sees only their own buttons
   - [ ] Runs against the `dev` database and deletes the test job afterwards
+- [ ] Dispatcher sees why a job was declined: on its New requests row, "Declined by ABC Fire Safety: Fully booked this week" (the reason is already saved in the job's history), so the dispatcher can choose the next business
 - [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
   - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**

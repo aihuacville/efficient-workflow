@@ -7,3 +7,12 @@ export async function listBusinesses() {
     orderBy: { name: "asc" },
   });
 }
+
+/** Who can do a business's visits: its technicians, and its owners for owner-operated jobs. */
+export async function listVisitors(businessId: string) {
+  return prisma.user.findMany({
+    where: { businessId, role: { in: ["TECHNICIAN", "OWNER"] } },
+    select: { id: true, name: true, role: true },
+    orderBy: { name: "asc" },
+  });
+}

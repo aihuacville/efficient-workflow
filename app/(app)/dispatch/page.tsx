@@ -1,10 +1,10 @@
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
 import { type Column, DataList } from "@/components/DataList";
 import { OrderActions } from "@/components/OrderActions";
 import { PageHeader } from "@/components/PageHeader";
+import { Section } from "@/components/Section";
 import { SwitchAccountPrompt } from "@/components/SwitchAccountPrompt";
 import { listBusinesses } from "@/lib/businesses";
 import { formatDate, timeAgo } from "@/lib/format";
@@ -114,27 +114,5 @@ export default async function DispatchPage() {
         </Section>
       </Stack>
     </>
-  );
-}
-
-function Section({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <Typography variant="h2" component="h2">
-        {title}
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 1.5 }}>
-        {hint}
-      </Typography>
-      {children}
-    </section>
   );
 }
