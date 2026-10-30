@@ -352,7 +352,10 @@ await db.select().from(orders).where(eq(orders.businessId, id)).orderBy(desc(ord
 - Changing the visit time or swapping the technician on a scheduled job is an edit, not a status change.
 - **The screens ask the rules which buttons to show** (`nextActions`), so they never show a button the server would refuse.
 
-**Next layer:** `lib/orders/transition.ts`, built with the pages that need it. It saves a change and its OrderEvent (the history entry) in one transaction. It only updates if the order is still at the status it was read at, so if two people tap Accept at once, one succeeds and the other is told the job was already accepted.
+**Saving a change:** [lib/orders/transition.ts](lib/orders/transition.ts) (`applyAction`) checks the rules, then updates the order and writes its OrderEvent (the history entry, with who did it) in one transaction.
+- **It only updates if the job is still exactly as it was when checked:** same status, business and technician. If two people tap Accept at once, one succeeds and the other is told "Someone else just changed this job. Reload to see the latest." The same happens if the owner accepts just as the dispatcher withdraws the offer.
+- **Every refusal says why,** so an API can reply with the right status code: `status` (not possible at this stage, 409), `person` (not allowed, 403), `input` (a detail is missing or wrong, 400), `not_found` (404) and `conflict` (changed by someone else, 409).
+- **Tested against the `dev` database:** the full job from offer to confirm, with the right person recorded at each step; both races above; and the refusals.
 
 ### CMS: Payload for marketing pages only, later (decided Oct 29, 2026)
 
@@ -440,7 +443,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - Moved: AI autofill and the suggested business to Saturday; the dispatcher page to Friday
 
 **Fri Oct 30: Dispatcher and owner, first deploy**
-- [ ] Save status changes (`lib/orders/transition.ts`): checks the rules, updates the order and writes its OrderEvent in one transaction, and refuses if someone else changed the job first
+- [x] Save status changes ([lib/orders/transition.ts](lib/orders/transition.ts)): checks the rules, updates the order and writes its OrderEvent in one transaction, and refuses if someone else changed the job first
 - [ ] Demo account switcher (dispatcher, owner, technician, customer), and demo users in `pnpm db:seed`
 - [ ] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
 - [ ] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets

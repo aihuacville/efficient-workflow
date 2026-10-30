@@ -38,7 +38,14 @@ export type OrderChanges = {
   visitStart?: Date;
 };
 
-export type CheckResult = { ok: true; changes: OrderChanges } | { ok: false; error: string };
+/**
+ * Why an action was refused. status: not possible at this stage. person: this person can't do
+ * it. input: a required detail is missing or wrong.
+ */
+export type RefusalReason = "status" | "person" | "input";
+
+export type CheckResult =
+  { ok: true; changes: OrderChanges } | { ok: false; reason: RefusalReason; error: string };
 
 /**
  * dispatcher: any platform dispatcher. owner: an owner of the business the job is offered to.
@@ -197,17 +204,19 @@ export function checkAction(
   if (!rule.from.includes(order.status)) {
     return {
       ok: false,
+      reason: "status",
       error: `"${rule.label}" isn't possible now: this job is at "${STATUS_LABELS[order.status]}".`,
     };
   }
   if (!rule.who.some((who) => isWho(who, order, actor))) {
     return {
       ok: false,
+      reason: "person",
       error: `Only ${rule.who.map((who) => WHO_TEXT[who]).join(" or ")} can do "${rule.label}".`,
     };
   }
   const missing = rule.check?.(input, order);
-  if (missing) return { ok: false, error: missing };
+  if (missing) return { ok: false, reason: "input", error: missing };
   return { ok: true, changes: { status: rule.to, ...rule.changes?.(input) } };
 }
 

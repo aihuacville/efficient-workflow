@@ -166,7 +166,7 @@ describe("who may do what", () => {
   });
 
   it("refuses a technician who tries to accept a job", () => {
-    expect(checkAction(orderAt("OFFERED"), "accept", tech)).toEqual({
+    expect(checkAction(orderAt("OFFERED"), "accept", tech)).toMatchObject({
       ok: false,
       error: 'Only the business with this job can do "Accept".',
     });
@@ -219,7 +219,7 @@ describe("declining and withdrawing", () => {
 
 describe("required details", () => {
   it("needs a business to offer the job", () => {
-    expect(checkAction(orderAt("NEW"), "offer", dispatcher)).toEqual({
+    expect(checkAction(orderAt("NEW"), "offer", dispatcher)).toMatchObject({
       ok: false,
       error: "Choose a business to offer the job to.",
     });
@@ -227,11 +227,11 @@ describe("required details", () => {
 
   it("needs a technician and a time to schedule", () => {
     const order = orderAt("ACCEPTED");
-    expect(checkAction(order, "schedule", owner, { visitStart: visit.visitStart })).toEqual({
+    expect(checkAction(order, "schedule", owner, { visitStart: visit.visitStart })).toMatchObject({
       ok: false,
       error: "Choose a technician.",
     });
-    expect(checkAction(order, "schedule", owner, { technician: visit.technician })).toEqual({
+    expect(checkAction(order, "schedule", owner, { technician: visit.technician })).toMatchObject({
       ok: false,
       error: "Choose a visit time.",
     });
@@ -243,7 +243,7 @@ describe("required details", () => {
       { id: "u_x", role: "TECHNICIAN", businessId: "b_other" },
       { id: "u_disp", role: "DISPATCHER", businessId: null },
     ] as const) {
-      expect(checkAction(order, "schedule", owner, { ...visit, technician })).toEqual({
+      expect(checkAction(order, "schedule", owner, { ...visit, technician })).toMatchObject({
         ok: false,
         error: "That person doesn't work for this business.",
       });
@@ -259,7 +259,7 @@ describe("required details", () => {
 
   it("needs a description to report a problem", () => {
     for (const note of [undefined, "", "   "]) {
-      expect(checkAction(orderAt("DONE"), "reportProblem", customer, { note })).toEqual({
+      expect(checkAction(orderAt("DONE"), "reportProblem", customer, { note })).toMatchObject({
         ok: false,
         error: "Tell us what went wrong.",
       });
@@ -299,5 +299,20 @@ describe("buttons for each person (nextActions)", () => {
         }
       }
     }
+  });
+});
+
+describe("why an action was refused", () => {
+  it("labels each refusal, so the API can reply with the right status code", () => {
+    expect(checkAction(orderAt("NEW"), "accept", owner)).toMatchObject({ reason: "status" });
+    expect(checkAction(orderAt("OFFERED"), "accept", tech)).toMatchObject({ reason: "person" });
+    expect(checkAction(orderAt("NEW"), "offer", dispatcher)).toMatchObject({ reason: "input" });
+  });
+
+  it("checks the stage first, then the person, then the details", () => {
+    // A technician trying to offer an accepted job: wrong stage wins.
+    expect(checkAction(orderAt("ACCEPTED"), "offer", tech)).toMatchObject({ reason: "status" });
+    // A technician offering a new job with no business: wrong person wins.
+    expect(checkAction(orderAt("NEW"), "offer", tech)).toMatchObject({ reason: "person" });
   });
 });
