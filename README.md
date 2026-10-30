@@ -393,6 +393,52 @@ await db.select().from(orders).where(eq(orders.businessId, id)).orderBy(desc(ord
 
 **When added:** keep Payload's content apart from order data, either in separate tables or in a separate small marketing site.
 
+### Tracking work: feature requests and pull requests (decided Oct 30, 2026)
+
+**They aren't alternatives: a professional team uses both, one after the other.**
+
+| | **Feature request** (a GitHub **Issue**) | **Pull request** (PR) |
+|---|---|---|
+| **What it is** | A description of a problem or idea, before any code | The code that solves it, proposed for review before it goes into `main` |
+| **Answers** | *What* is wrong or wanted, *who* it affects, and *why* it matters | *How* it was solved, and proof that it works |
+| **Who writes it** | Anyone: a customer, a business owner, the team, whoever spotted it | Whoever builds the fix |
+| **Example** | "A customer lost her tracking link and couldn't see her request's progress" | "Remember tracking links on the customer's phone, and add Copy tracking link for staff" |
+
+**The usual flow:**
+1. **Open an issue** for the problem, for example "Customer can't get back to her request after losing the tracking link". Add a label (`feature`, `bug`) and discuss the options in the issue.
+2. **Create a branch** for the fix, for example `feature/lost-tracking-link`.
+3. **Open a pull request** that says `Closes #12` (the issue's number). GitHub links them, and closes the issue when the PR is merged.
+4. **Review:** someone reads the changes line by line, and the checks run (tests, typecheck, build).
+5. **Merge** into `main`, which deploys it.
+
+**What a good feature request contains**, using the lost link as the example:
+
+```markdown
+**Problem:** A customer lost her tracking link and couldn't see her request's progress.
+There's no sign-in and no email yet, so the link is her only way back.
+
+**Who it affects:** Customers. Staff, when a customer calls to ask.
+
+**Ideas:** remember links on the customer's phone; let staff copy and share the link;
+later, email or text the link.
+
+**Watch out:** a plain "look up by phone number" page would let anyone who knows a
+number see that person's address and visit times.
+
+**Done when:** a customer who closed the tab can get back to her request, and staff can
+share the link after confirming who's calling.
+```
+
+**Why it's worth it:**
+- **Nothing gets lost.** Requests from a demo, a call or a pilot business all go into one list, with their discussion.
+- **Every change explains itself.** A year later, the PR shows what changed and links to the issue saying why.
+- **Review before production.** Today every commit goes straight to `main`, and `main` deploys to the live site. With PRs, a mistake is caught before customers see it.
+- **A preview for each PR.** Vercel deploys every PR to its own preview link, so it can be tried on a phone before merging. Neon can give each preview its own database branch.
+
+**How this project does it:**
+- **During the demo sprint (until Nov 2):** keep the TODO list in this README and commit straight to `main`. It's one person moving fast, and the list is the plan.
+- **After the demo:** move the open TODOs, and the feedback from the demo, into **GitHub Issues**. Work on branches, with a **pull request for every change**, and protect `main` so nothing reaches it without a PR. The lost tracking link is a good first issue.
+
 ## Build plan
 
 As a small team, we build a **demo MVP in five days** and present it on **Monday, Nov 2, 2026**. That presentation replaces the prototype round: it's where we find out whether people understand it and want it. If they do, we harden it into a **pilot** with real customers and businesses.
@@ -482,7 +528,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
   - [x] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
   - [x] Apply migrations and demo data to `main` (`pnpm db:deploy`, then `pnpm db:seed`), without the password going through chat
   - [x] Push `main`, and check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
-- [ ] *You:* test the live link on your phone
+- [x] *You:* test the live link on your phone (all good, Oct 30)
 
 **Sat Oct 31: Technician and customer, then the extras**
 - [ ] Technician page (phone): today's jobs; On my way → Start work → Done; optional photo of the finished work
@@ -494,6 +540,9 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
   - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
   - [ ] Checks the tracking page shows each step, and each person sees only their own buttons
   - [ ] Runs against the `dev` database and deletes the test job afterwards
+- [ ] Lost tracking link: a customer who loses the link has no way back to their request
+  - [ ] "Your requests" on the same phone: the browser remembers each tracking link after sending (nothing sent to the server), and the home page links back to them. A backup only, since browser storage can be cleared or blocked, so the success screen still says "Save this link"
+  - [ ] Staff can share the link: a **Copy tracking link** button on the dispatcher's and owner's job rows, for when the customer calls and staff have confirmed who they are
 - [ ] Dispatcher sees why a job was declined: on its New requests row, "Declined by ABC Fire Safety: Fully booked this week" (the reason is already saved in the job's history), so the dispatcher can choose the next business
 - [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
@@ -503,6 +552,10 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Demo data: a few jobs at different stages, so every page has something to show
 - [ ] Remove the `/track/demo` sample page (the real tracking page replaces it)
 - [ ] Spending limit on the API key; password-protect the demo link
+  - [ ] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Until then, anyone with the link can switch to Dana and cancel jobs
+- [ ] Demo reset for `main`: one command that clears all jobs and reloads clean demo data, to run before each run-through and right before the demo (`pnpm db:seed` only resets the demo customer's jobs)
+- [ ] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later)
+- [ ] Friendly error and loading pages: a branded 404, a "something went wrong, try again" page, and loading placeholders on staff pages *(cut first if short of time, after AI autofill and scoring)*
 - [ ] *You:* full run-through
   - [ ] Every screen is readable on a phone without zooming
   - [ ] Each person knows what to tap next, without being told
@@ -513,6 +566,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Morning: phone and laptop layout polish, and bug fixes from the run-through
 - [x] QR code that opens the request page ([docs/qr/](docs/qr/))
 - [ ] Code freeze at noon; only fixes after that
+- [ ] Before rehearsing and before presenting: reset the demo data on `main`, then open each page once to wake the database (Neon's free plan pauses it after about 5 idle minutes)
 - [ ] Final rehearsal on a real phone and laptop: customer on one phone, technician on a second phone, owner and dispatcher on the laptop
 - [ ] Record a screen video of the full flow as a backup
 - [ ] *You:* slides, and a phone hotspot in case the Wi-Fi is bad
@@ -523,8 +577,16 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 
 - [ ] Real sign-in for owners and admins
 - [ ] Email notifications at each step
+- [ ] Lost tracking link, the proper fix: email or text the tracking link when the request is sent, and add **Find my request** (enter a phone number, get a code by text, then see the request). Not a plain phone-number lookup: anyone who knew the number could see the address and visit times
 - [ ] Rate limiting on public endpoints, and storing notice photos
 - [ ] Integration tests for orders and permissions
+- [ ] Automatic checks on every push and pull request (GitHub Actions: tests, typecheck, build), so a broken commit can't deploy
+- [ ] Privacy policy and terms pages, and a line on the request form saying how contact details are used
+- [ ] Error tracking (for example Sentry), so failures raise an alert instead of a customer complaint
+- [ ] Database backups: check Neon's restore window on our plan, and try a restore once before real data depends on it
+- [ ] Staff hear about new work without reloading: the dispatcher about new requests, owners about offers (with email notifications)
+- [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request
+- [ ] Move open TODOs and demo feedback to GitHub Issues; work on branches with a pull request for every change, and protect `main` (see [Decisions](#tracking-work-feature-requests-and-pull-requests-decided-oct-30-2026))
 - [ ] Onboard 1–3 businesses in one city, print QR codes, run a 6-week pilot
 
 ### Later (based on the pilot)
@@ -537,7 +599,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Customers can cancel before the visit, if the business turns it on in its settings
 - [ ] Technician view: route for the day, customer contact, checklists
 - [ ] Real-time tracking: the customer's tracking page and the owner's map update live as technicians move and change status
-  - [ ] First step: refresh the tracking page every 30 seconds (no new service needed)
+  - [ ] First step: refresh the tracking page every 30 seconds (no new service needed). Moved to Saturday Oct 31 for the demo
   - [ ] Then live updates and GPS positions through a real-time service (Pusher, Ably or Supabase Realtime), sending location only while a technician is on the way, with their consent
 - [ ] Payload CMS for marketing pages, FAQs and help articles, kept apart from order data (see [Decisions](#cms-payload-for-marketing-pages-only-later-decided-oct-29-2026))
 - [ ] PWA: installable app, offline job list for technicians, push notifications
