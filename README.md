@@ -123,6 +123,20 @@ There are no passwords: the switcher sets a cookie saying who you are ([lib/sess
 | `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
 | `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
 
+**Updating the live database (`main`).** Vercel deploys the code on every push to `main`, but it doesn't change the database. When a commit adds a migration, or the live demo data needs resetting, run these from your laptop **before pushing**:
+
+1. In the Neon console, open the project → **Branches** → **`main`** → **Connect**, turn **Connection pooling off** (the host must not contain `-pooler`), and copy the connection string.
+2. In your terminal, at the repo root (zsh). `read -s` keeps the string off the screen and out of your shell history:
+
+   ```bash
+   read -rs "MAIN_URL?Paste main's connection string: "; echo
+   DATABASE_URL_UNPOOLED="$MAIN_URL" pnpm db:deploy   # create or update the tables
+   DATABASE_URL_UNPOOLED="$MAIN_URL" pnpm db:seed     # add or reset the demo data
+   unset MAIN_URL
+   ```
+
+Both commands use `DATABASE_URL_UNPOOLED` when it's set, and a variable typed on the command line wins over `.env.local`, so they go to `main`, not `dev`. Never paste the string into chat or commit it.
+
 `pnpm install` also runs `prisma generate`, which rebuilds the typed client in `lib/generated/` from the schema.
 
 ## Exploring the server: the ratings endpoint

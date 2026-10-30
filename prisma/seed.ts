@@ -5,10 +5,15 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 // job to rate (tracking link /track/demo) and a few past reviews. Run with `pnpm db:seed`.
 // Safe to run again: businesses and staff are updated in place, and the demo customer's jobs are
 // deleted and added fresh. Jobs you created yourself are left alone.
-// It writes to whichever database DATABASE_URL points to: on a laptop, the Neon dev branch.
+// It writes to whichever database DATABASE_URL_UNPOOLED or DATABASE_URL points to: on a laptop,
+// the Neon dev branch.
 
+// DATABASE_URL_UNPOOLED first, like the migrations (prisma.config.ts), so one variable set on the
+// command line points both at the same database. See "First deploy" in the README.
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg({
+    connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
+  }),
 });
 
 const BUSINESS_ID = "demo_abc_fire";
