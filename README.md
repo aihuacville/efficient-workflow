@@ -564,7 +564,8 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Spending limit on the API key; password-protect the demo link
   - [ ] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Until then, anyone with the link can switch to Dana and cancel jobs
 - [x] Demo reset for `main`: one command that clears all jobs and reloads clean demo data, to run before each run-through and right before the demo: `pnpm db:reset-demo` (done Oct 30; `pnpm db:seed` still only resets the demo customer's jobs)
-- [ ] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later)
+- [x] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later; done Oct 30)
+  - [x] Staff pages refresh too, so new requests and offers appear without reloading. Refreshes pause while the tab is hidden, keep anything being typed, and stop once a job is confirmed or cancelled ([AutoRefresh.tsx](components/AutoRefresh.tsx))
 - [ ] Friendly error and loading pages: a branded 404, a "something went wrong, try again" page, and loading placeholders on staff pages *(cut first if short of time, after AI autofill and scoring)*
 - [ ] *You:* full run-through
   - [ ] Every screen is readable on a phone without zooming
@@ -594,7 +595,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Privacy policy and terms pages, and a line on the request form saying how contact details are used
 - [ ] Error tracking (for example Sentry), so failures raise an alert instead of a customer complaint
 - [ ] Database backups: check Neon's restore window on our plan, and try a restore once before real data depends on it
-- [ ] Staff hear about new work without reloading: the dispatcher about new requests, owners about offers (with email notifications)
+- [ ] Staff hear about new work without reloading: the dispatcher about new requests, owners about offers (with email notifications). Pages already refresh every 30 seconds; this is about alerts when the page isn't open
 - [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request
 - [ ] Move open TODOs and demo feedback to GitHub Issues; work on branches with a pull request for every change, and protect `main` (see [Decisions](#tracking-work-feature-requests-and-pull-requests-decided-oct-30-2026))
 - [ ] Onboard 1–3 businesses in one city, print QR codes, run a 6-week pilot
@@ -609,7 +610,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Customers can cancel before the visit, if the business turns it on in its settings
 - [ ] Technician view: route for the day, customer contact, checklists
 - [ ] Real-time tracking: the customer's tracking page and the owner's map update live as technicians move and change status
-  - [ ] First step: refresh the tracking page every 30 seconds (no new service needed). Moved to Saturday Oct 31 for the demo
+  - [x] First step: refresh the tracking page every 30 seconds (no new service needed). Done Oct 30 for the demo, on staff pages too
   - [ ] Then live updates and GPS positions through a real-time service (Pusher, Ably or Supabase Realtime), sending location only while a technician is on the way, with their consent
 - [ ] Payload CMS for marketing pages, FAQs and help articles, kept apart from order data (see [Decisions](#cms-payload-for-marketing-pages-only-later-decided-oct-29-2026))
 - [ ] PWA: installable app, offline job list for technicians, push notifications

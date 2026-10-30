@@ -9,6 +9,7 @@ import Stepper from "@mui/material/Stepper";
 import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { CustomerConfirm } from "@/components/CustomerConfirm";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { OrderRating } from "@/components/OrderRating";
@@ -136,10 +137,14 @@ export default async function TrackPage({ params }: { params: Promise<{ token: s
           />
         )}
 
-        {order.status !== "CANCELLED" && (
-          <Typography variant="body2" color="text.secondary">
-            Bookmark this page to check progress. Reload it to see the latest.
-          </Typography>
+        {order.status !== "CANCELLED" && order.status !== "CONFIRMED" && (
+          <>
+            {/* Nothing changes after these two, so stop asking. */}
+            <AutoRefresh seconds={30} />
+            <Typography variant="body2" color="text.secondary">
+              Bookmark this page to check progress. It updates by itself.
+            </Typography>
+          </>
         )}
       </Stack>
     </Container>
