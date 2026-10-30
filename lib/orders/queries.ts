@@ -41,6 +41,16 @@ export async function listOpenOrders() {
       businessId: true,
       technicianId: true,
       business: { select: { name: true } },
+      // The last time an offer came back (declined by the business, or withdrawn), and why.
+      events: {
+        where: { fromStatus: "OFFERED", toStatus: "NEW" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          note: true,
+          actor: { select: { role: true, business: { select: { name: true } } } },
+        },
+      },
     },
   });
 }

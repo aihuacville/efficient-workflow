@@ -1,5 +1,6 @@
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { type Column, DataList } from "@/components/DataList";
@@ -23,6 +24,19 @@ const due: Column<Order> = {
   label: "Deadline",
   render: (o) => (o.dueDate ? formatDate(o.dueDate) : "None given"),
 };
+
+/** Why a job is back in New requests, so the dispatcher can choose the next business. */
+function lastOffer(o: Order) {
+  const back = o.events[0];
+  if (!back) return "None yet";
+  if (back.actor?.role !== "OWNER") return "Offer withdrawn";
+  const by = `Declined by ${back.actor.business?.name ?? "the business"}`;
+  return (
+    <Typography variant="body2" component="span" color="warning.dark">
+      {back.note ? `${by}: ${back.note}` : by}
+    </Typography>
+  );
+}
 
 export default async function DispatchPage() {
   const user = await getCurrentUser();
@@ -73,6 +87,7 @@ export default async function DispatchPage() {
               due,
               { label: "Received", render: (o) => timeAgo(o.createdAt) },
               { label: "Notes", render: (o) => o.notes ?? "None" },
+              { label: "Last offer", render: lastOffer },
             ]}
             actions={actions}
           />

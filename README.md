@@ -558,7 +558,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
   - [x] "Your requests" on the same phone: the browser remembers each tracking link after sending (nothing sent to the server), and the home page links back to them. A backup only, since browser storage can be cleared or blocked, so the success screen still says "Save this link"
     - [x] Also remembered when a tracking page is opened, so a link opened from a text on another phone shows there too. Only the service and date are stored, not the address, in case the device is shared ([lib/my-requests.ts](lib/my-requests.ts))
   - [x] Staff can share the link: a **Copy link** button on the dispatcher's and owner's job rows, for when the customer calls and staff have confirmed who they are. Owners get it only after accepting, like the customer's contact details
-- [ ] Dispatcher sees why a job was declined: on its New requests row, "Declined by ABC Fire Safety: Fully booked this week" (the reason is already saved in the job's history), so the dispatcher can choose the next business
+- [x] Dispatcher sees why a job was declined: on its New requests row, "Declined by ABC Fire Safety: Fully booked this week" (the reason is already saved in the job's history), so the dispatcher can choose the next business. A "Last offer" column; "Offer withdrawn" when the dispatcher took it back (done Oct 30)
 - [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
   - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
