@@ -1,45 +1,140 @@
-import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
-import { DataList } from "@/components/DataList";
+import { type Column, DataList } from "@/components/DataList";
+import { OrderActions } from "@/components/OrderActions";
 import { PageHeader } from "@/components/PageHeader";
+import { SwitchAccountPrompt } from "@/components/SwitchAccountPrompt";
+import { listBusinesses } from "@/lib/businesses";
+import { formatDate, timeAgo } from "@/lib/format";
+import { listOpenOrders } from "@/lib/orders/queries";
+import { nextActions, STAFF_STATUS_LABELS } from "@/lib/orders/status";
+import { getCurrentUser, toActor } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Dispatch" };
 
-// Sample rows to check the responsive layout. Replaced by real orders on Thursday.
-const SAMPLE = [
-  { id: "1", service: "Fire safety inspection", address: "12 Main St, Springfield, IL", due: "Nov 15", status: "New" },
-  { id: "2", service: "Backflow testing", address: "88 Oak Ave, Springfield, IL", due: "Nov 20", status: "Offered" },
-  { id: "3", service: "Fire safety inspection", address: "5 Elm Ct, Springfield, IL", due: "Dec 1", status: "New" },
-];
+type Order = Awaited<ReturnType<typeof listOpenOrders>>[number];
 
-export default function DispatchPage() {
+const service: Column<Order> = { label: "Service", render: (o) => o.serviceType, primary: true };
+const address: Column<Order> = { label: "Address", render: (o) => o.address };
+const due: Column<Order> = {
+  label: "Deadline",
+  render: (o) => (o.dueDate ? formatDate(o.dueDate) : "None given"),
+};
+
+export default async function DispatchPage() {
+  const user = await getCurrentUser();
+  if (user?.role !== "DISPATCHER") {
+    return (
+      <>
+        <PageHeader title="Dispatch" />
+        <SwitchAccountPrompt who="dispatchers (Dana Lee in the demo)" />
+      </>
+    );
+  }
+
+  const [orders, businesses] = await Promise.all([listOpenOrders(), listBusinesses()]);
+  const actor = toActor(user);
+  const newRequests = orders.filter((o) => o.status === "NEW");
+  const offered = orders.filter((o) => o.status === "OFFERED");
+  const inProgress = orders.filter((o) => o.status !== "NEW" && o.status !== "OFFERED");
+
+  // The buttons come from the workflow rules, so the page never offers a move the server refuses.
+  const actions = (o: Order) => (
+    <OrderActions
+      orderId={o.id}
+      serviceType={o.serviceType}
+      actions={nextActions(o, actor)}
+      businesses={businesses}
+    />
+  );
+
   return (
     <>
-      <PageHeader title="Dispatch" subtitle="New requests waiting for a business" />
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Sample data. The real queue arrives on Thursday.
-      </Alert>
-      <DataList
-        rows={SAMPLE}
-        getKey={(r) => r.id}
-        empty="Nothing to dispatch."
-        columns={[
-          { label: "Service", render: (r) => r.service, primary: true },
-          { label: "Address", render: (r) => r.address },
-          { label: "Due", render: (r) => r.due },
-          {
-            label: "Status",
-            render: (r) => <Chip size="small" label={r.status} color={r.status === "New" ? "primary" : "default"} />,
-          },
-        ]}
-        actions={() => (
-          <Button variant="contained" size="small">
-            Offer job
-          </Button>
-        )}
+      <PageHeader
+        title="Dispatch"
+        subtitle={`${newRequests.length} new, ${offered.length} waiting for a business, ${inProgress.length} in progress`}
       />
+      <Stack spacing={4}>
+        <Section title="New requests" hint="Oldest first. Offer each one to a business.">
+          <DataList
+            rows={newRequests}
+            getKey={(o) => o.id}
+            empty="No new requests. They show up here when customers send them."
+            columns={[
+              service,
+              address,
+              due,
+              { label: "Received", render: (o) => timeAgo(o.createdAt) },
+              { label: "Notes", render: (o) => o.notes ?? "None" },
+            ]}
+            actions={actions}
+          />
+        </Section>
+
+        <Section title="Waiting for a business" hint="Offered, not accepted yet.">
+          <DataList
+            rows={offered}
+            getKey={(o) => o.id}
+            empty="No offers waiting."
+            columns={[
+              service,
+              address,
+              due,
+              { label: "Offered to", render: (o) => o.business?.name },
+              { label: "Offered", render: (o) => timeAgo(o.updatedAt) },
+            ]}
+            actions={actions}
+          />
+        </Section>
+
+        <Section title="In progress" hint="Accepted by a business, until the customer confirms.">
+          <DataList
+            rows={inProgress}
+            getKey={(o) => o.id}
+            empty="Nothing in progress."
+            columns={[
+              service,
+              address,
+              { label: "Business", render: (o) => o.business?.name },
+              {
+                label: "Status",
+                render: (o) => (
+                  <Chip
+                    size="small"
+                    label={STAFF_STATUS_LABELS[o.status]}
+                    color={o.status === "PROBLEM_REPORTED" ? "warning" : "default"}
+                  />
+                ),
+              },
+            ]}
+            actions={actions}
+          />
+        </Section>
+      </Stack>
     </>
+  );
+}
+
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <Typography variant="h2" component="h2">
+        {title}
+      </Typography>
+      <Typography color="text.secondary" sx={{ mb: 1.5 }}>
+        {hint}
+      </Typography>
+      {children}
+    </section>
   );
 }

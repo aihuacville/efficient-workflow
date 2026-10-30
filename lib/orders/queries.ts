@@ -19,3 +19,27 @@ export async function getTrackedOrder(trackingToken: string) {
     },
   });
 }
+
+/**
+ * Every open job, oldest first, for the dispatcher's page. Dispatchers work for the platform,
+ * so this is the one query that isn't filtered by businessId.
+ */
+export async function listOpenOrders() {
+  return prisma.order.findMany({
+    where: { status: { notIn: ["CONFIRMED", "CANCELLED"] } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      status: true,
+      serviceType: true,
+      address: true,
+      dueDate: true,
+      notes: true,
+      createdAt: true,
+      updatedAt: true,
+      businessId: true,
+      technicianId: true,
+      business: { select: { name: true } },
+    },
+  });
+}

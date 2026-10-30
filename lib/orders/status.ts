@@ -79,6 +79,20 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
+/** Short names for staff pages, where "Offered" means more than "Finding a business". */
+export const STAFF_STATUS_LABELS: Record<OrderStatus, string> = {
+  NEW: "New",
+  OFFERED: "Offered",
+  ACCEPTED: "Accepted",
+  SCHEDULED: "Scheduled",
+  ON_THE_WAY: "On the way",
+  IN_PROGRESS: "In progress",
+  DONE: "Done, awaiting customer",
+  CONFIRMED: "Confirmed",
+  PROBLEM_REPORTED: "Problem reported",
+  CANCELLED: "Cancelled",
+};
+
 export const ORDER_STATUSES = Object.keys(STATUS_LABELS) as OrderStatus[];
 
 const WHO_TEXT: Record<Who, string> = {

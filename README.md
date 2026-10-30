@@ -86,7 +86,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 |---|---|
 | `/` | Customer landing page |
 | `/request` | Customer request form: photo, details, contact info; saves a real order and shows its tracking link |
-| `/dispatch` | Dispatcher queue (sample data for now) |
+| `/dispatch` | Dispatcher page (as Dana Lee): new requests, offers waiting for a business, jobs in progress; offer, withdraw, cancel |
 | `/jobs` | Business owner's job offers |
 | `/track/<link>` | A customer's tracking page: timeline, business and visit time, and the rating once they've confirmed. Send a request at `/request` to get a link |
 | `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
@@ -457,7 +457,9 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 **Fri Oct 30: Dispatcher and owner, first deploy**
 - [x] Save status changes ([lib/orders/transition.ts](lib/orders/transition.ts)): checks the rules, updates the order and writes its OrderEvent in one transaction, and refuses if someone else changed the job first
 - [x] Demo account switcher (dispatcher, owner, technician, customer), and demo users in `pnpm db:seed`; each person sees only their own sections
-- [ ] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
+- [x] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
+  - [x] One API for every staff button: `POST /api/orders/<id>/actions` ([route.ts](app/api/orders/[id]/actions/route.ts)), with status codes from the workflow rules (401 no account, 403 not allowed, 409 wrong stage or changed by someone else, 400 missing details, 404 no such job)
+  - [x] Buttons come from the rules (`nextActions`); Cancel and Withdraw ask first; the offer dialog lists businesses that offer the service first
 - [ ] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets
 - [ ] **First production deploy** (Vercel + Neon)
   - [ ] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
