@@ -23,6 +23,7 @@ import {
   SERVICE_TYPES,
   STEP_FIELDS,
 } from "@/lib/orders/request";
+import { rememberRequest } from "@/lib/my-requests";
 
 const STEPS = ["Photo", "Check details", "Contact info"] as const;
 
@@ -105,6 +106,7 @@ export function RequestForm() {
         body: JSON.stringify(fields),
       });
       const data = (await res.json().catch(() => ({}))) as {
+        trackingToken?: string;
         trackingUrl?: string;
         error?: string;
         fields?: FieldErrors;
@@ -118,6 +120,13 @@ export function RequestForm() {
         setServerErrors(data.fields ?? {});
         setTried(true);
         throw new Error(data.error ?? "Couldn't send your request. Please try again.");
+      }
+      if (data.trackingToken) {
+        rememberRequest({
+          token: data.trackingToken,
+          serviceType: fields.serviceType,
+          sentAt: new Date().toISOString(),
+        });
       }
       setTrackingUrl(data.trackingUrl);
     } catch (e) {

@@ -30,6 +30,7 @@ export async function listOpenOrders() {
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      trackingToken: true,
       status: true,
       serviceType: true,
       address: true,
@@ -48,6 +49,7 @@ const DAY = 24 * 60 * 60 * 1000;
 
 const staffJobFields = {
   id: true,
+  trackingToken: true,
   status: true,
   serviceType: true,
   address: true,
@@ -87,8 +89,11 @@ export async function listBusinessOrders(businessId: string) {
       },
     },
   });
-  // A business sees the customer's contact details only once it has accepted the job.
-  return orders.map((o) => ({ ...o, customer: o.status === "OFFERED" ? null : o.customer }));
+  // A business sees the customer's contact details, and their tracking link, only once it has
+  // accepted the job.
+  return orders.map((o) =>
+    o.status === "OFFERED" ? { ...o, customer: null, trackingToken: null } : o,
+  );
 }
 
 /** A technician's upcoming and active visits, soonest first. */

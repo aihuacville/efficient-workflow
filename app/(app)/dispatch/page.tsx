@@ -1,6 +1,7 @@
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import type { Metadata } from "next";
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { type Column, DataList } from "@/components/DataList";
 import { OrderActions } from "@/components/OrderActions";
 import { PageHeader } from "@/components/PageHeader";
@@ -42,12 +43,16 @@ export default async function DispatchPage() {
 
   // The buttons come from the workflow rules, so the page never offers a move the server refuses.
   const actions = (o: Order) => (
-    <OrderActions
-      orderId={o.id}
-      serviceType={o.serviceType}
-      actions={nextActions(o, actor)}
-      businesses={businesses}
-    />
+    <>
+      <OrderActions
+        orderId={o.id}
+        serviceType={o.serviceType}
+        actions={nextActions(o, actor)}
+        businesses={businesses}
+      />
+      {/* For when a customer calls having lost their link. */}
+      <CopyLinkButton token={o.trackingToken} />
+    </>
   );
 
   return (

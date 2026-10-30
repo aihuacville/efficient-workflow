@@ -3,6 +3,7 @@ import Rating from "@mui/material/Rating";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { type Column, DataList } from "@/components/DataList";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { OrderActions } from "@/components/OrderActions";
@@ -73,12 +74,16 @@ async function OwnerJobs({ user, businessId }: { user: SessionUser; businessId: 
   ]);
   const actor = toActor(user);
   const actions = (o: Job) => (
-    <OrderActions
-      orderId={o.id}
-      serviceType={o.serviceType}
-      actions={nextActions(o, actor)}
-      people={people}
-    />
+    <>
+      <OrderActions
+        orderId={o.id}
+        serviceType={o.serviceType}
+        actions={nextActions(o, actor)}
+        people={people}
+      />
+      {/* Not on offers: the link is the customer's, shared only once the job is accepted. */}
+      {o.trackingToken && <CopyLinkButton token={o.trackingToken} />}
+    </>
   );
   const byStatus = (...statuses: Job["status"][]) =>
     jobs.filter((o) => statuses.includes(o.status));

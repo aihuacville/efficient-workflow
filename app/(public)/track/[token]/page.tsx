@@ -13,6 +13,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { CustomerConfirm } from "@/components/CustomerConfirm";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { OrderRating } from "@/components/OrderRating";
+import { RememberRequest } from "@/components/RememberRequest";
 import type { OrderStatus } from "@/lib/generated/prisma/enums";
 import { getTrackedOrder } from "@/lib/orders/queries";
 import { trackingTimeline } from "@/lib/orders/tracking";
@@ -70,6 +71,11 @@ export default async function TrackPage({ params }: { params: Promise<{ token: s
     <Container maxWidth="sm" sx={{ py: { xs: 3, md: 6 } }}>
       <Stack spacing={2}>
         <Typography variant="h1">Your request</Typography>
+        <RememberRequest
+          token={order.trackingToken}
+          serviceType={order.serviceType}
+          sentAt={order.createdAt.toISOString()}
+        />
 
         <Paper sx={{ p: 3 }}>
           <Typography fontWeight={600}>{order.serviceType}</Typography>
