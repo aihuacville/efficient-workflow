@@ -114,7 +114,7 @@ There are no per-person passwords: the switcher sets a cookie saying who you are
 2. Send it. **Copy link** copies the tracking link. On a phone over Wi-Fi it selects the link instead ("Press and hold the link to copy it"), because the clipboard only works over https or on localhost.
 3. See what was saved: run `pnpm db:studio` and open **Order** (status `NEW`, with its tracking token), **Customer**, and **OrderEvent** (one "Request received" entry, `toStatus: NEW`). Delete test rows there if you like: deleting an order also deletes its events, but delete the customer separately. If you delete the ABC Fire Safety demo rows, `pnpm db:seed` puts them back.
 
-**Other commands:** `pnpm test` (run the tests once; `pnpm test:watch` reruns them as you edit), `pnpm typecheck`, `pnpm build`, `pnpm format`.
+**Other commands:** `pnpm test` (run the tests once; `pnpm test:watch` reruns them as you edit), `pnpm test:e2e` (the whole job in real Chrome at phone and laptop sizes, about 2 minutes; starts the dev server if needed, and `pnpm exec playwright test --ui` lets you watch it step by step), `pnpm typecheck`, `pnpm build`, `pnpm format`.
 
 **Database commands** (they use the `dev` branch from `.env.local`):
 
@@ -550,10 +550,10 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [x] Rating after the customer confirms
   - [x] Tracking page shows the rating form once confirmed, and the customer's rating after (done Oct 29)
   - [x] Owner sees the stars on the job (Finished section of the owner page, done Oct 30)
-- [ ] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes
-  - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
-  - [ ] Checks the tracking page shows each step, and each person sees only their own buttons
-  - [ ] Runs against the `dev` database and deletes the test job afterwards
+- [x] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes (done Oct 30, [e2e/full-job.e2e.ts](e2e/full-job.e2e.ts))
+  - [x] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
+  - [x] Checks the tracking page shows each step, and each person sees only their own buttons; also that the owner sees no customer details on an offer, and that the job's history records the right person at each step
+  - [x] Runs against the `dev` database and deletes the test job afterwards. Uses the installed Chrome (the phone run emulates a Pixel 7); adding Safari's engine (WebKit) is one line plus a download
 - [x] Lost tracking link: a customer who loses the link has no way back to their request (done Oct 30)
   - [x] "Your requests" on the same phone: the browser remembers each tracking link after sending (nothing sent to the server), and the home page links back to them. A backup only, since browser storage can be cleared or blocked, so the success screen still says "Save this link"
     - [x] Also remembered when a tracking page is opened, so a link opened from a text on another phone shows there too. Only the service and date are stored, not the address, in case the device is shared ([lib/my-requests.ts](lib/my-requests.ts))
