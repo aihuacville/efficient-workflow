@@ -105,7 +105,9 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | Grace Liu | Owner | GreenLeaf Lawn Care |
 | Chris Moore | Technician | GreenLeaf Lawn Care |
 
-There are no passwords: the switcher sets a cookie saying who you are ([lib/session.ts](lib/session.ts)). That's fine for a demo but not for real use, so real sign-in replaces it in the pilot, and the live demo link gets a password on Saturday.
+There are no per-person passwords: the switcher sets a cookie saying who you are ([lib/session.ts](lib/session.ts)). Real sign-in replaces it in the pilot.
+
+**Demo password for the staff side** ([middleware.ts](middleware.ts)): when the `DEMO_PASSWORD` environment variable is set, `/dispatch`, `/jobs`, the switcher and the staff actions API ask for it with the browser's own sign-in prompt (any username). Customer pages (home, request form, tracking) stay open, so the audience can scan the QR code and try them. On a laptop it's usually not set, so nothing is protected. To try it locally: `DEMO_PASSWORD=something pnpm dev`.
 
 **To try the request form:**
 1. Open `/request` (on a phone, use the `Network:` address). Try tapping **Next** with empty fields, a phone number with too few digits, and **Back**: your answers stay.
@@ -562,7 +564,9 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Demo data: a few jobs at different stages, so every page has something to show
 - [ ] Remove the `/track/demo` sample page (the real tracking page replaces it)
 - [ ] Spending limit on the API key; password-protect the demo link
-  - [ ] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Until then, anyone with the link can switch to Dana and cancel jobs
+  - [x] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Staff side only; customer pages stay open for the QR code (done Oct 30)
+  - [ ] *You:* in Vercel, **Settings → Environment Variables**, add `DEMO_PASSWORD` for **Production** with a password of your choice, then push or redeploy (a new variable only takes effect on the next deploy). Don't put it in the repo or in chat
+  - [ ] *You:* set a monthly spending limit on the Anthropic API key (console.anthropic.com → Settings → Limits)
 - [x] Demo reset for `main`: one command that clears all jobs and reloads clean demo data, to run before each run-through and right before the demo: `pnpm db:reset-demo` (done Oct 30; `pnpm db:seed` still only resets the demo customer's jobs)
 - [x] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later; done Oct 30)
   - [x] Staff pages refresh too, so new requests and offers appear without reloading. Refreshes pause while the tab is hidden, keep anything being typed, and stop once a job is confirmed or cancelled ([AutoRefresh.tsx](components/AutoRefresh.tsx))
