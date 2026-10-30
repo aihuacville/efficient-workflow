@@ -9,8 +9,13 @@ export async function getTrackedOrder(trackingToken: string) {
       status: true,
       serviceType: true,
       address: true,
+      dueDate: true,
       visitStart: true,
+      createdAt: true,
       business: { select: { id: true, name: true } },
+      technician: { select: { name: true } },
+      events: { select: { toStatus: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+      rating: { select: { stars: true, comment: true } },
     },
   });
 }

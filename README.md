@@ -88,6 +88,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | `/request` | Customer request form: photo, details, contact info; saves a real order and shows its tracking link |
 | `/dispatch` | Dispatcher queue (sample data for now) |
 | `/jobs` | Business owner's job offers |
+| `/track/<link>` | A customer's tracking page: timeline, business and visit time, and the rating once they've confirmed. Send a request at `/request` to get a link |
 | `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
 
 **To check the phone layout:**
@@ -423,9 +424,10 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
   - [x] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
   - [x] The final button says what happens next: "Send request. We'll find a business for you."
   - [x] Photo step: take or choose a photo and see it; not uploaded yet (AI autofill reads it on Thursday; storing photos is a pilot task)
-- [ ] Customer tracking page
-  - [ ] Status timeline: Request received → Business assigned → Visit scheduled → Technician on the way → Work done → You confirm
-  - [ ] Each step shows its date, plus the business name and visit time once known; the current step is highlighted
+- [x] Customer tracking page ([track/[token]/page.tsx](app/(public)/track/[token]/page.tsx); timeline rules in [lib/orders/tracking.ts](lib/orders/tracking.ts), tested)
+  - [x] Status timeline: Request received → Business assigned → Visit scheduled → Technician on the way → Work done → You confirm
+  - [x] Each step shows its date, plus the business name and visit time once known; the current step is highlighted
+  - [x] Times show in the customer's own time zone; cancelled and problem-reported jobs show a notice; unknown links show 404
 - [x] After submitting: show the tracking link with a **Copy link** button and "Save this link to check progress" (no sign-in for customers, and no email until the pilot)
 - [ ] *You:* review the phone screens
 
@@ -445,6 +447,8 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [ ] Technician page (phone): today's jobs; On my way → Started → Done; optional photo of the finished work
 - [ ] Customer confirms the work is done, or reports a problem
 - [ ] Rating appears on the tracking page after the customer confirms, and is saved; the owner sees the stars on the job
+  - [x] Tracking page shows the rating form once confirmed, and the customer's rating after (done Oct 29)
+  - [ ] Owner sees the stars on the job
 - [ ] Demo switch for the rating shows only in demo mode, as a backup; remove the `/track/demo` sample page
 - [ ] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes
   - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
