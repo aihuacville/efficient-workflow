@@ -89,7 +89,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | `/dispatch` | Dispatcher page (as Dana Lee): new requests, offers waiting for a business, jobs in progress; offer, withdraw, cancel |
 | `/jobs` | As an owner (Omar, Grace): offers, jobs to schedule, scheduled visits, jobs waiting for the customer, finished jobs with stars. As a technician (Alex, Jordan, Chris): phone-first cards for their visits, with tap-to-call, directions, and On my way → Start work → Done |
 | `/track/<link>` | A customer's tracking page: timeline, business and visit time, and the rating once they've confirmed. Send a request at `/request` to get a link |
-| `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
+| `/track/demo-new`, `/track/demo-scheduled`, `/track/demo-on-the-way`, `/track/demo-done`, `/track/demo-problem`, `/track/demo` | The demo jobs' tracking pages, one at each stage (from `pnpm db:seed`). `/track/demo` is confirmed and not rated yet, so it shows the rating form. These links are guessable, which is fine for demo data only |
 
 **To check the phone layout:**
 - **In Chrome on your laptop:** open DevTools (`Cmd+Option+I`), then turn on the device toolbar (`Cmd+Shift+M`) and pick an iPhone.
@@ -104,6 +104,8 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | Alex Kim, Jordan Patel | Technicians | ABC Fire Safety |
 | Grace Liu | Owner | GreenLeaf Lawn Care |
 | Chris Moore | Technician | GreenLeaf Lawn Care |
+| Priya Shah | Owner | Prairie Fire & Safety |
+| Luis Ortiz | Technician | Prairie Fire & Safety |
 
 There are no per-person passwords: the switcher sets a cookie saying who you are ([lib/session.ts](lib/session.ts)). Real sign-in replaces it in the pilot.
 
@@ -121,7 +123,7 @@ There are no per-person passwords: the switcher sets a cookie saying who you are
 | Command | What it does |
 |---|---|
 | `pnpm db:migrate` | After changing `prisma/schema.prisma`: creates a migration file and applies it to `dev`. Add `--name what_changed` to name it |
-| `pnpm db:seed` | Adds the demo data: two businesses (ABC Fire Safety, GreenLeaf Lawn Care), six staff for the account switcher, a confirmed job to rate (`/track/demo`) and three past reviews. Run it again to reset the demo; jobs you created yourself are kept |
+| `pnpm db:seed` | Adds the demo data: three businesses (ABC Fire Safety, GreenLeaf Lawn Care, Prairie Fire & Safety), eight staff for the account switcher, and 16 jobs at every stage, each with a realistic history (a declined job, an offer, jobs to schedule, visits, a problem report, finished jobs with reviews). Run it again to reset the demo jobs; jobs you created yourself are kept |
 | `pnpm db:reset-demo` | **Deletes every job and customer**, then adds the demo data again. For a clean start before a run-through or the demo. Businesses and staff stay |
 | `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
 | `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
@@ -248,7 +250,7 @@ Run the automated test first, so a practice isn't wasted on something a test wou
 
 ## Exploring the server: the ratings endpoint
 
-A small example of server-side code, first added to explore how the backend works. The rating on `/track/demo` sends each rating to the server, which checks it, saves it in Postgres and replies with JSON.
+A small example of server-side code, first added to explore how the backend works. The rating on a confirmed job's tracking page sends each rating to the server, which checks it, saves it in Postgres and replies with JSON.
 
 **Where the code is:**
 - [app/api/ratings/route.ts](app/api/ratings/route.ts): the **Route Handler**. In Next.js, a `route.ts` file inside `app/api/` is server code that runs when someone calls that URL. It never reaches the browser, so it's the place for checks, secrets and saving data. There's no separate server to run or deploy.
@@ -286,7 +288,7 @@ Phone: shows "Thanks! Your 4-star rating was saved." (the server's message)
 
 **Try it** (run `pnpm db:seed` once first, then `pnpm dev`):
 
-1. **In the browser:** open http://localhost:3000/track/demo, turn on **Demo: show rating**, pick stars and send. Under the thank-you, **All reviews** appears, with the demo business's three past reviews and yours ([ReviewList.tsx](components/ReviewList.tsx)). Open http://localhost:3000/api/ratings?businessId=demo_abc_fire to see the same data as raw JSON.
+1. **In the browser:** open http://localhost:3000/track/demo (a confirmed demo job), pick stars and send. Then switch to **Omar Hassan** on `/jobs`: the **Reviews** section shows ABC Fire Safety's average and every review, newest first, including yours ([ReviewList.tsx](components/ReviewList.tsx)). Open http://localhost:3000/api/ratings?businessId=demo_abc_fire to see the same data as raw JSON. Run `pnpm db:seed` to make `/track/demo` ratable again.
 2. **From the terminal, with no browser.** `curl` sends a request directly:
 
    ```bash
@@ -660,11 +662,11 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
   - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
-  - [ ] Show each business's rating in the offer dialog, for example "ABC Fire Safety ★ 4.7 (12 reviews)", using the same reviews as the review list. Also worth showing on the owner's page as feedback (their own average)
+  - [ ] Show each business's rating in the offer dialog, for example "ABC Fire Safety ★ 4.7 (12 reviews)", using the same reviews as the review list. The owner's own average already shows in **Reviews** on their page (done Oct 30)
 - [ ] AI autofill from a photo of the notice *(cut first if short of time)*
 - [ ] *You:* find 2–3 real notice photos for the demo
-- [ ] Demo data: a few jobs at different stages, so every page has something to show
-- [ ] Remove the `/track/demo` sample page (the real tracking page replaces it)
+- [x] Demo data: a few jobs at different stages, so every page has something to show (done Oct 30: 16 jobs across three businesses, each with a realistic history; readable tracking links for each stage)
+- [x] Remove the `/track/demo` sample page (the real tracking page replaces it). `/track/demo` is now the real tracking page of a confirmed demo job, and the review list moved to the owner's page as **Reviews** (done Oct 30)
 - [ ] Spending limit on the API key; password-protect the demo link
   - [x] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Staff side only; customer pages stay open for the QR code (done Oct 30)
   - [ ] *You:* in Vercel, **Settings → Environment Variables**, add `DEMO_PASSWORD` for **Production** with a password of your choice, then push or redeploy (a new variable only takes effect on the next deploy). Don't put it in the repo or in chat

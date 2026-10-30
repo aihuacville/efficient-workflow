@@ -8,6 +8,7 @@ import { type Column, DataList } from "@/components/DataList";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { OrderActions } from "@/components/OrderActions";
 import { PageHeader } from "@/components/PageHeader";
+import { ReviewList } from "@/components/ReviewList";
 import { Section } from "@/components/Section";
 import { SwitchAccountPrompt } from "@/components/SwitchAccountPrompt";
 import { VisitCard } from "@/components/VisitCard";
@@ -186,6 +187,10 @@ async function OwnerJobs({ user, businessId }: { user: SessionUser; businessId: 
               },
             ]}
           />
+        </Section>
+
+        <Section title="Reviews" hint="What your customers said, newest first.">
+          <ReviewList businessId={businessId} />
         </Section>
       </Stack>
     </>
