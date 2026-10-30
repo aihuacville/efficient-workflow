@@ -5,11 +5,13 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 // job to rate (tracking link /track/demo) and a few past reviews. Run with `pnpm db:seed`.
 // Safe to run again: businesses and staff are updated in place, and the demo customer's jobs are
 // deleted and added fresh. Jobs you created yourself are left alone.
+// `pnpm db:reset-demo` (this file with --reset) first deletes every job and customer, for a
+// clean start before a run-through or the demo.
 // It writes to whichever database DATABASE_URL_UNPOOLED or DATABASE_URL points to: on a laptop,
 // the Neon dev branch.
 
 // DATABASE_URL_UNPOOLED first, like the migrations (prisma.config.ts), so one variable set on the
-// command line points both at the same database. See "First deploy" in the README.
+// command line points both at the same database. See "Updating the live database" in the README.
 const prisma = new PrismaClient({
   adapter: new PrismaPg({
     connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
@@ -66,6 +68,17 @@ const PAST_REVIEWS = [
 ];
 
 async function main() {
+  if (process.argv.includes("--reset")) {
+    // Every job and customer, not just the demo's. Deleting jobs also deletes their ratings and
+    // history; businesses and staff stay, and are updated below.
+    const jobs = await prisma.order.deleteMany();
+    const customers = await prisma.customer.deleteMany();
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    console.log(
+      `Reset: deleted ${plural(jobs.count, "job")} and ${plural(customers.count, "customer")}.`,
+    );
+  }
+
   // Upsert (create, or update in place) rather than delete: jobs you created may point at these.
   for (const { id, ...data } of BUSINESSES) {
     await prisma.business.upsert({ where: { id }, create: { id, ...data }, update: data });

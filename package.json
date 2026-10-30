@@ -18,7 +18,8 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:reset-demo": "prisma db seed -- --reset"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

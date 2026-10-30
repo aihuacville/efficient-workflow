@@ -120,6 +120,7 @@ There are no passwords: the switcher sets a cookie saying who you are ([lib/sess
 |---|---|
 | `pnpm db:migrate` | After changing `prisma/schema.prisma`: creates a migration file and applies it to `dev`. Add `--name what_changed` to name it |
 | `pnpm db:seed` | Adds the demo data: two businesses (ABC Fire Safety, GreenLeaf Lawn Care), six staff for the account switcher, a confirmed job to rate (`/track/demo`) and three past reviews. Run it again to reset the demo; jobs you created yourself are kept |
+| `pnpm db:reset-demo` | **Deletes every job and customer**, then adds the demo data again. For a clean start before a run-through or the demo. Businesses and staff stay |
 | `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
 | `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
 
@@ -135,7 +136,13 @@ There are no passwords: the switcher sets a cookie saying who you are ([lib/sess
    unset MAIN_URL
    ```
 
-Both commands use `DATABASE_URL_UNPOOLED` when it's set, and a variable typed on the command line wins over `.env.local`, so they go to `main`, not `dev`. Never paste the string into chat or commit it.
+   Before a run-through or the demo, wipe all jobs instead, so the live site starts clean (it deletes every job and customer on `main`):
+
+   ```bash
+   DATABASE_URL_UNPOOLED="$MAIN_URL" pnpm db:reset-demo
+   ```
+
+All three commands use `DATABASE_URL_UNPOOLED` when it's set, and a variable typed on the command line wins over `.env.local`, so they go to `main`, not `dev`. Never paste the string into chat or commit it.
 
 `pnpm install` also runs `prisma generate`, which rebuilds the typed client in `lib/generated/` from the schema.
 
@@ -556,7 +563,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Remove the `/track/demo` sample page (the real tracking page replaces it)
 - [ ] Spending limit on the API key; password-protect the demo link
   - [ ] Password with a small check in Next.js middleware and the password in an environment variable (Vercel's built-in password protection needs a paid plan). Until then, anyone with the link can switch to Dana and cancel jobs
-- [ ] Demo reset for `main`: one command that clears all jobs and reloads clean demo data, to run before each run-through and right before the demo (`pnpm db:seed` only resets the demo customer's jobs)
+- [x] Demo reset for `main`: one command that clears all jobs and reloads clean demo data, to run before each run-through and right before the demo: `pnpm db:reset-demo` (done Oct 30; `pnpm db:seed` still only resets the demo customer's jobs)
 - [ ] Tracking page refreshes itself every 30 seconds, so the customer's phone updates when the technician taps On my way (the first step of real-time tracking, pulled forward from Later)
 - [ ] Friendly error and loading pages: a branded 404, a "something went wrong, try again" page, and loading placeholders on staff pages *(cut first if short of time, after AI autofill and scoring)*
 - [ ] *You:* full run-through
