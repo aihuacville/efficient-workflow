@@ -34,6 +34,7 @@ export const theme = createTheme({
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     h1: { fontSize: "1.75rem", fontWeight: 700, "@media (min-width:900px)": { fontSize: "2.25rem" } },
     h2: { fontSize: "1.375rem", fontWeight: 600, "@media (min-width:900px)": { fontSize: "1.5rem" } },
+    h3: { fontSize: "1.125rem", fontWeight: 600 },
     button: { textTransform: "none", fontWeight: 600 },
   },
   components: {

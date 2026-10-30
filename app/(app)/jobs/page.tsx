@@ -1,6 +1,7 @@
 import Chip from "@mui/material/Chip";
 import Rating from "@mui/material/Rating";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
 import { type Column, DataList } from "@/components/DataList";
 import { LocalDateTime } from "@/components/LocalDateTime";
@@ -8,6 +9,7 @@ import { OrderActions } from "@/components/OrderActions";
 import { PageHeader } from "@/components/PageHeader";
 import { Section } from "@/components/Section";
 import { SwitchAccountPrompt } from "@/components/SwitchAccountPrompt";
+import { VisitCard } from "@/components/VisitCard";
 import { listVisitors } from "@/lib/businesses";
 import { formatDate, timeAgo } from "@/lib/format";
 import { listBusinessOrders, listTechnicianOrders } from "@/lib/orders/queries";
@@ -185,26 +187,42 @@ async function OwnerJobs({ user, businessId }: { user: SessionUser; businessId: 
   );
 }
 
-/** A technician's visits. Saturday turns this into a phone-first "today" page. */
+/**
+ * The technician's page, made for a phone: jobs under way first, then upcoming visits, each as a
+ * card with tap-to-call, tap-for-directions and one big button for the next step.
+ */
 async function TechnicianJobs({ user }: { user: SessionUser }) {
-  const visits = await listTechnicianOrders(user.id);
+  const visits = (await listTechnicianOrders(user.id)).filter(
+    (v): v is Visit & { customer: NonNullable<Visit["customer"]> } => v.customer !== null,
+  );
   const actor: Actor = toActor(user);
+  const now = visits.filter((v) => v.status === "ON_THE_WAY" || v.status === "IN_PROGRESS");
+  const upcoming = visits.filter((v) => v.status === "SCHEDULED");
+  const cards = (list: typeof visits) => (
+    <Stack spacing={2}>
+      {list.map((v) => (
+        <VisitCard key={v.id} visit={v} actions={nextActions(v, actor)} />
+      ))}
+    </Stack>
+  );
+
   return (
     <>
-      <PageHeader title="My jobs" subtitle={`${user.business?.name}: your visits, soonest first`} />
-      <DataList
-        rows={visits}
-        getKey={(o: Visit) => o.id}
-        empty="No visits assigned to you."
-        columns={[service, visit, address, status, customer]}
-        actions={(o) => (
-          <OrderActions
-            orderId={o.id}
-            serviceType={o.serviceType}
-            actions={nextActions(o, actor)}
-          />
+      <PageHeader title="My jobs" subtitle={`${user.name}, ${user.business?.name}`} />
+      <Stack spacing={4} sx={{ maxWidth: 560 }}>
+        {now.length > 0 && (
+          <Section title="Now" hint="On the way or in progress.">
+            {cards(now)}
+          </Section>
         )}
-      />
+        <Section title="Upcoming" hint="Your scheduled visits, soonest first.">
+          {upcoming.length > 0 ? (
+            cards(upcoming)
+          ) : (
+            <Typography color="text.secondary">No upcoming visits.</Typography>
+          )}
+        </Section>
+      </Stack>
     </>
   );
 }

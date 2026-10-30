@@ -87,7 +87,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | `/` | Customer landing page |
 | `/request` | Customer request form: photo, details, contact info; saves a real order and shows its tracking link |
 | `/dispatch` | Dispatcher page (as Dana Lee): new requests, offers waiting for a business, jobs in progress; offer, withdraw, cancel |
-| `/jobs` | As an owner (Omar, Grace): offers, jobs to schedule, scheduled visits, jobs waiting for the customer, finished jobs with stars. As a technician (Alex, Jordan, Chris): their visits, with On my way → Start work → Done |
+| `/jobs` | As an owner (Omar, Grace): offers, jobs to schedule, scheduled visits, jobs waiting for the customer, finished jobs with stars. As a technician (Alex, Jordan, Chris): phone-first cards for their visits, with tap-to-call, directions, and On my way → Start work → Done |
 | `/track/<link>` | A customer's tracking page: timeline, business and visit time, and the rating once they've confirmed. Send a request at `/request` to get a link |
 | `/track/demo` | The demo job's tracking page, with the rating (turn on "Demo: show rating") |
 
@@ -540,7 +540,10 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [x] *You:* test the live link on your phone (all good, Oct 30)
 
 **Sat Oct 31: Technician and customer, then the extras**
-- [ ] Technician page (phone): today's jobs; On my way → Start work → Done; optional photo of the finished work
+- [x] Technician page (phone): today's jobs; On my way → Start work → Done (done Oct 30, [VisitCard.tsx](components/VisitCard.tsx))
+  - [x] **Now** (on the way or in progress) first, then **Upcoming**, soonest first. Grouped by status, not by date, since the server runs in UTC and "today" depends on the technician's time zone
+  - [x] One card per visit: time, service, notes, the address as a link to maps, the customer's phone as a tap-to-call link, and one big button for the next step
+  - [ ] Optional photo of the finished work: moved to the pilot, with storing notice photos
 - [x] Customer confirms the work is done, or reports a problem, on the tracking page (done Oct 30)
   - [x] "Is the work done?" appears once the job is done: **Yes, the work is done** shows the rating straight away; **Report a problem** asks what went wrong, and the owner sees it with **Book a return visit**
   - [x] Customers act through `POST /api/track/<token>/actions` ([route.ts](app/api/track/[token]/actions/route.ts)): the tracking token proves it's their job, and only confirm and report a problem are accepted
@@ -593,7 +596,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Real sign-in for owners and admins
 - [ ] Email notifications at each step
 - [ ] Lost tracking link, the proper fix: email or text the tracking link when the request is sent, and add **Find my request** (enter a phone number, get a code by text, then see the request). Not a plain phone-number lookup: anyone who knew the number could see the address and visit times
-- [ ] Rate limiting on public endpoints, and storing notice photos
+- [ ] Rate limiting on public endpoints, and storing photos (notice photos, and the technician's optional photo of the finished work)
 - [ ] Integration tests for orders and permissions
 - [ ] Automatic checks on every push and pull request (GitHub Actions: tests, typecheck, build), so a broken commit can't deploy
 - [ ] Privacy policy and terms pages, and a line on the request form saying how contact details are used

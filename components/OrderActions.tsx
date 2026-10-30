@@ -61,6 +61,7 @@ export function OrderActions({
   actions,
   businesses = [],
   people = [],
+  size = "small",
 }: {
   orderId: string;
   serviceType: string;
@@ -69,6 +70,8 @@ export function OrderActions({
   businesses?: Business[];
   /** schedule, rebook: who can do the visit (the business's technicians and owners). */
   people?: Person[];
+  /** large: full-width buttons, easy to tap on a phone (the technician's page). */
+  size?: "small" | "large";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<Action | null>(null);
@@ -119,7 +122,8 @@ export function OrderActions({
       {actions.map(({ action, label }, i) => (
         <Button
           key={action}
-          size="small"
+          size={size}
+          fullWidth={size === "large"}
           variant={
             i === 0 && !CONFIRM[action]?.danger && !SECONDARY.has(action) ? "contained" : "outlined"
           }
