@@ -14,16 +14,29 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { SessionUser } from "@/lib/session";
 import { BOTTOM_NAV_HEIGHT, SIDEBAR_WIDTH } from "@/theme/theme";
+import { AccountSwitcher } from "./AccountSwitcher";
 import { NAV_ITEMS } from "./nav";
 
 /**
- * Responsive app frame. Laptop (md and up): permanent sidebar on the left.
- * Phone (below md): top bar with the page name, and a bottom tab bar within thumb reach.
+ * Responsive app frame. Laptop (md and up): permanent sidebar on the left, with the account
+ * switcher at the bottom. Phone (below md): top bar with the switcher, and a bottom tab bar
+ * within thumb reach. Each person sees only their own sections.
  */
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  user,
+  accounts,
+  children,
+}: {
+  user: SessionUser | null;
+  accounts: SessionUser[];
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const active = NAV_ITEMS.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
+  const items = user ? NAV_ITEMS.filter((i) => i.roles.includes(user.role)) : NAV_ITEMS;
+  const active = items.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
+  const switcher = <AccountSwitcher user={user} accounts={accounts} />;
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh" }}>
@@ -39,8 +52,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Toolbar>
           <Brand />
         </Toolbar>
-        <List component="nav" aria-label="Main" sx={{ px: 1 }}>
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+        <List component="nav" aria-label="Main" sx={{ px: 1, flex: 1 }}>
+          {items.map(({ href, label, icon: Icon }) => (
             <ListItemButton
               key={href}
               component={Link}
@@ -55,12 +68,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </ListItemButton>
           ))}
         </List>
+        <Box sx={{ p: 1, borderTop: 1, borderColor: "divider" }}>{switcher}</Box>
       </Drawer>
 
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <AppBar position="sticky" sx={{ display: { md: "none" }, borderBottom: 1, borderColor: "divider" }}>
-          <Toolbar>
+          <Toolbar sx={{ gap: 1 }}>
             <Brand />
+            <Box sx={{ flex: 1 }} />
+            <Box sx={{ minWidth: 0, maxWidth: "55%" }}>{switcher}</Box>
           </Toolbar>
         </AppBar>
         <Box
@@ -98,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <BottomNavigation showLabels value={active?.href ?? false} sx={{ height: BOTTOM_NAV_HEIGHT }}>
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          {items.map(({ href, label, icon: Icon }) => (
             <BottomNavigationAction key={href} component={Link} href={href} value={href} label={label} icon={<Icon />} />
           ))}
         </BottomNavigation>

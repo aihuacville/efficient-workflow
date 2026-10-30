@@ -1,6 +1,12 @@
 import { AppShell } from "@/components/AppShell";
+import { getCurrentUser, listAccounts } from "@/lib/session";
 
-/** Dispatcher and business-owner pages: sidebar on laptops, bottom bar on phones. */
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+/** Staff pages: sidebar on laptops, bottom bar on phones, and the demo account switcher. */
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const [user, accounts] = await Promise.all([getCurrentUser(), listAccounts()]);
+  return (
+    <AppShell user={user} accounts={accounts}>
+      {children}
+    </AppShell>
+  );
 }

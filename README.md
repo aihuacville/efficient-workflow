@@ -76,7 +76,7 @@ Then, from the repo root:
 ```bash
 corepack enable   # first time only: gives you the pnpm version the repo pins
 pnpm install      # install dependencies
-pnpm db:seed      # first time only: adds the demo business and job to the dev database
+pnpm db:seed      # first time only: adds the demo businesses, staff and jobs to the dev database
 pnpm dev          # start the dev server
 ```
 
@@ -95,6 +95,18 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 - **In Chrome on your laptop:** open DevTools (`Cmd+Option+I`), then turn on the device toolbar (`Cmd+Shift+M`) and pick an iPhone.
 - **On a real phone:** connect it to the same Wi-Fi as your laptop. Then open the `Network:` address that `pnpm dev` prints (like `http://192.168.x.x:3000`).
 
+**Staff pages and the account switcher:** open `/dispatch` or `/jobs` and use the switcher (bottom of the sidebar on laptops, top bar on phones) to be anyone in the demo:
+
+| Person | Role | Business |
+|---|---|---|
+| Dana Lee | Dispatcher | (the platform) |
+| Omar Hassan | Owner | ABC Fire Safety |
+| Alex Kim, Jordan Patel | Technicians | ABC Fire Safety |
+| Grace Liu | Owner | GreenLeaf Lawn Care |
+| Chris Moore | Technician | GreenLeaf Lawn Care |
+
+There are no passwords: the switcher sets a cookie saying who you are ([lib/session.ts](lib/session.ts)). That's fine for a demo but not for real use, so real sign-in replaces it in the pilot, and the live demo link gets a password on Saturday.
+
 **To try the request form:**
 1. Open `/request` (on a phone, use the `Network:` address). Try tapping **Next** with empty fields, a phone number with too few digits, and **Back**: your answers stay.
 2. Send it. **Copy link** copies the tracking link. On a phone over Wi-Fi it selects the link instead ("Press and hold the link to copy it"), because the clipboard only works over https or on localhost.
@@ -107,7 +119,7 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 | Command | What it does |
 |---|---|
 | `pnpm db:migrate` | After changing `prisma/schema.prisma`: creates a migration file and applies it to `dev`. Add `--name what_changed` to name it |
-| `pnpm db:seed` | Adds the demo data: ABC Fire Safety, a confirmed job to rate (`/track/demo`) and three past reviews. Run it again to reset the demo |
+| `pnpm db:seed` | Adds the demo data: two businesses (ABC Fire Safety, GreenLeaf Lawn Care), six staff for the account switcher, a confirmed job to rate (`/track/demo`) and three past reviews. Run it again to reset the demo; jobs you created yourself are kept |
 | `pnpm db:studio` | Opens Prisma Studio in the browser to see and edit the data |
 | `pnpm db:deploy` | Applies saved migrations without creating new ones. Used for `main` at deploy time |
 
@@ -444,7 +456,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 
 **Fri Oct 30: Dispatcher and owner, first deploy**
 - [x] Save status changes ([lib/orders/transition.ts](lib/orders/transition.ts)): checks the rules, updates the order and writes its OrderEvent in one transaction, and refuses if someone else changed the job first
-- [ ] Demo account switcher (dispatcher, owner, technician, customer), and demo users in `pnpm db:seed`
+- [x] Demo account switcher (dispatcher, owner, technician, customer), and demo users in `pnpm db:seed`; each person sees only their own sections
 - [ ] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
 - [ ] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets
 - [ ] **First production deploy** (Vercel + Neon)

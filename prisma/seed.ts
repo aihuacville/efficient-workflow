@@ -1,8 +1,10 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
-// Demo data: one business, a confirmed job to rate (tracking link /track/demo) and a few past
-// reviews. Run with `pnpm db:seed`. Safe to run again: it deletes the demo rows and adds them fresh.
+// Demo data: two businesses, the demo staff (a dispatcher, owners and technicians), a confirmed
+// job to rate (tracking link /track/demo) and a few past reviews. Run with `pnpm db:seed`.
+// Safe to run again: businesses and staff are updated in place, and the demo customer's jobs are
+// deleted and added fresh. Jobs you created yourself are left alone.
 // It writes to whichever database DATABASE_URL points to: on a laptop, the Neon dev branch.
 
 const prisma = new PrismaClient({
@@ -11,6 +13,33 @@ const prisma = new PrismaClient({
 
 const BUSINESS_ID = "demo_abc_fire";
 const CUSTOMER_ID = "demo_customer";
+
+const BUSINESSES = [
+  {
+    id: BUSINESS_ID,
+    name: "ABC Fire Safety",
+    services: ["Fire safety inspection", "Backflow testing"],
+    lat: 39.7817,
+    lng: -89.6501,
+  },
+  {
+    id: "demo_greenleaf",
+    name: "GreenLeaf Lawn Care",
+    services: ["Lawn care"],
+    lat: 39.8017,
+    lng: -89.6437,
+  },
+];
+
+// The people in the demo account switcher.
+const STAFF = [
+  { id: "demo_dispatcher", name: "Dana Lee", role: "DISPATCHER", businessId: null },
+  { id: "demo_owner_abc", name: "Omar Hassan", role: "OWNER", businessId: BUSINESS_ID },
+  { id: "demo_tech_alex", name: "Alex Kim", role: "TECHNICIAN", businessId: BUSINESS_ID },
+  { id: "demo_tech_jordan", name: "Jordan Patel", role: "TECHNICIAN", businessId: BUSINESS_ID },
+  { id: "demo_owner_green", name: "Grace Liu", role: "OWNER", businessId: "demo_greenleaf" },
+  { id: "demo_tech_chris", name: "Chris Moore", role: "TECHNICIAN", businessId: "demo_greenleaf" },
+] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const job = {
@@ -32,20 +61,22 @@ const PAST_REVIEWS = [
 ];
 
 async function main() {
-  // Orders first: deleting them also deletes their ratings and events.
+  // Upsert (create, or update in place) rather than delete: jobs you created may point at these.
+  for (const { id, ...data } of BUSINESSES) {
+    await prisma.business.upsert({ where: { id }, create: { id, ...data }, update: data });
+  }
+  for (const { id, ...data } of STAFF) {
+    const email = `${id.replace("demo_", "").replace("_", ".")}@demo.example`;
+    await prisma.user.upsert({
+      where: { id },
+      create: { id, email, ...data },
+      update: { email, ...data },
+    });
+  }
+
+  // The demo customer's jobs: deleting them also deletes their ratings and events.
   await prisma.order.deleteMany({ where: { customerId: CUSTOMER_ID } });
   await prisma.customer.deleteMany({ where: { id: CUSTOMER_ID } });
-  await prisma.business.deleteMany({ where: { id: BUSINESS_ID } });
-
-  await prisma.business.create({
-    data: {
-      id: BUSINESS_ID,
-      name: "ABC Fire Safety",
-      services: ["Fire safety inspection"],
-      lat: 39.7817,
-      lng: -89.6501,
-    },
-  });
   await prisma.customer.create({
     data: { id: CUSTOMER_ID, name: "Sam Rivera", phone: "555-0100" },
   });
@@ -74,7 +105,8 @@ async function main() {
   }
 
   console.log(
-    `Demo data ready: ABC Fire Safety, 1 job to rate, ${PAST_REVIEWS.length} past reviews.`,
+    `Demo data ready: ${BUSINESSES.length} businesses, ${STAFF.length} staff, 1 job to rate, ` +
+      `${PAST_REVIEWS.length} past reviews.`,
   );
 }
 
