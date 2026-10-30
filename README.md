@@ -404,7 +404,11 @@ Set before the pilot so the result isn't a matter of opinion. By the end of the 
 
 ### Sprint: Demo MVP (Tue Oct 27 – Sun Nov 1, 2026)
 
-Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Sunday after noon is for fixes and rehearsal only.
+Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday after noon is for fixes and rehearsal only.
+
+> **Status, Thu Oct 29 (evening):** Wednesday's data and customer flow is finished, a day late, so Thursday's AI autofill and dispatch work moves to Friday and Saturday. The plan below puts **the core loop first** (request → dispatcher → owner → technician → customer confirms). **AI autofill and suggestion scoring come after it.** If time runs short, they're the first to cut: the demo still works with typed-in details and the dispatcher choosing the business.
+>
+> **Don't push `main` until Friday's deploy.** Three commits (ratings in Postgres, request form, tracking page) need the `main` database's tables first; pushing earlier breaks the live site.
 
 **Tue Oct 27: Workspace and app shell**
 - [x] Workspace: pnpm, Turborepo, TypeScript, Next.js, MUI
@@ -413,64 +417,66 @@ Deploying on **Friday**, not Sunday, leaves two days to fix hosting problems. Su
 - [x] Rating component: five stars and an optional comment, previewed at `/track/demo` with a "Demo: show rating" switch
 - [x] *You:* create accounts and sign in: GitHub, Vercel, Neon (hosted Postgres), Anthropic API key
 
-**Wed Oct 28: Data and customer flow**
+**Wed Oct 28: Data and customer flow** (finished Thu Oct 29)
 - [x] *You:* Neon connected to Vercel; `dev` branch created; `.env.local` with the pooled `DATABASE_URL` (no Docker)
 - [x] Prisma connected to Neon: first migration (`init`) on the `dev` branch
 - [x] Data model: Business, User (dispatcher, owner, technician), Customer, Order, OrderEvent, Rating ([prisma/schema.prisma](prisma/schema.prisma))
 - [x] Order state machine ([lib/orders/status.ts](lib/orders/status.ts)), with tests (`pnpm test`; see [Decisions](#order-workflow-who-can-change-a-jobs-status-decided-oct-29-2026))
 - [x] Move ratings from `data/ratings.json` to the database, tied to a confirmed job; demo data with `pnpm db:seed`
-- [ ] Apply migrations and demo data to `main` at the first deploy (`pnpm db:deploy`, then `pnpm db:seed`). Until then, the live `/track/demo` page and ratings endpoint fail, because `main` has no tables yet
 - [x] Customer request form that saves real orders ([RequestForm.tsx](app/(public)/request/RequestForm.tsx), `POST /api/orders`; field rules in [lib/orders/request.ts](lib/orders/request.ts), tested)
   - [x] Step indicator at the top: 1 Photo → 2 Check details → 3 Contact info ("Step 2 of 3" on phones)
   - [x] The final button says what happens next: "Send request. We'll find a business for you."
-  - [x] Photo step: take or choose a photo and see it; not uploaded yet (AI autofill reads it on Thursday; storing photos is a pilot task)
+  - [x] Photo step: take or choose a photo and see it; not uploaded yet (AI autofill reads it later; storing photos is a pilot task)
 - [x] Customer tracking page ([track/[token]/page.tsx](app/(public)/track/[token]/page.tsx); timeline rules in [lib/orders/tracking.ts](lib/orders/tracking.ts), tested)
   - [x] Status timeline: Request received → Business assigned → Visit scheduled → Technician on the way → Work done → You confirm
   - [x] Each step shows its date, plus the business name and visit time once known; the current step is highlighted
   - [x] Times show in the customer's own time zone; cancelled and problem-reported jobs show a notice; unknown links show 404
 - [x] After submitting: show the tracking link with a **Copy link** button and "Save this link to check progress" (no sign-in for customers, and no email until the pilot)
-- [ ] *You:* review the phone screens
+- [ ] *You:* review the phone screens: send a request on your phone and open its tracking page
 
-**Thu Oct 29: AI autofill and dispatch**
+**Thu Oct 29: Catch-up**
 - [x] Flatten the repo to a single Next.js app (see [Decisions](#repo-structure-a-single-nextjs-app-no-monorepo-decided-oct-29-2026))
-- [ ] *You:* in Vercel, set **Settings → Build and Deployment → Root Directory** back to empty (it was `apps/web`)
-- [ ] AI autofill from a photo of the notice
-- [ ] Dispatcher page: queue of new requests, offer a job to a business, cancel
-- [ ] Suggested business for each request (human in the loop)
-  - [ ] Scoring rules: offers the service, distance, rating, free time; tested
-  - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
-- [ ] *You:* find 2–3 real notice photos for the demo
+- [x] Finish Wednesday's data and customer flow (above)
+- Moved: AI autofill and the suggested business to Saturday; the dispatcher page to Friday
 
-**Fri Oct 30: Owner and technician flow, first deploy**
-- [ ] Demo account switcher (dispatcher, owner, technician, customer)
-- [ ] Owner page: accept or decline, schedule a visit, assign a technician
-- [ ] Technician page (phone): today's jobs; On my way → Started → Done; optional photo of the finished work
-- [ ] Customer confirms the work is done, or reports a problem
-- [ ] Rating appears on the tracking page after the customer confirms, and is saved; the owner sees the stars on the job
+**Fri Oct 30: Dispatcher and owner, first deploy**
+- [ ] Save status changes (`lib/orders/transition.ts`): checks the rules, updates the order and writes its OrderEvent in one transaction, and refuses if someone else changed the job first
+- [ ] Demo account switcher (dispatcher, owner, technician, customer), and demo users in `pnpm db:seed`
+- [ ] Dispatcher page: queue of new requests, offer a job to a business (chosen from a list for now), withdraw, cancel
+- [ ] Owner page: accept or decline, schedule a visit, assign a technician, **Mark done** if the technician forgets
+- [ ] **First production deploy** (Vercel + Neon)
+  - [ ] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
+  - [ ] Apply migrations and demo data to `main` (`pnpm db:deploy`, then `pnpm db:seed`), without the password going through chat
+  - [ ] Push `main`, and check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
+- [ ] *You:* test the live link on your phone
+
+**Sat Oct 31: Technician and customer, then the extras**
+- [ ] Technician page (phone): today's jobs; On my way → Start work → Done; optional photo of the finished work
+- [ ] Customer confirms the work is done, or reports a problem, on the tracking page
+- [ ] Rating after the customer confirms
   - [x] Tracking page shows the rating form once confirmed, and the customer's rating after (done Oct 29)
   - [ ] Owner sees the stars on the job
-- [ ] Demo switch for the rating shows only in demo mode, as a backup; remove the `/track/demo` sample page
 - [ ] End-to-end test of the whole job, automated with Playwright in a real browser (`pnpm test:e2e`), on phone and laptop screen sizes
   - [ ] Customer sends a request → dispatcher offers it → owner accepts and schedules a technician → technician taps On my way, Start work, Done → customer confirms and rates
   - [ ] Checks the tracking page shows each step, and each person sees only their own buttons
   - [ ] Runs against the `dev` database and deletes the test job afterwards
-- [ ] **First production deploy** (Vercel + Neon)
-  - [ ] Check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
-- [ ] *You:* test the live link on your phone
-
-**Sat Oct 31: Polish**
-- [ ] Phone and laptop layout polish
-- [x] QR code that opens the request page ([docs/qr/](docs/qr/))
-- [ ] Demo data
+- [ ] Suggested business for each request (human in the loop) *(cut first if short of time)*
+  - [ ] Scoring rules: offers the service, distance, rating, free time; tested
+  - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
+- [ ] AI autofill from a photo of the notice *(cut first if short of time)*
+- [ ] *You:* find 2–3 real notice photos for the demo
+- [ ] Demo data: a few jobs at different stages, so every page has something to show
+- [ ] Remove the `/track/demo` sample page (the real tracking page replaces it)
 - [ ] Spending limit on the API key; password-protect the demo link
-- [ ] Bug fixes
 - [ ] *You:* full run-through
   - [ ] Every screen is readable on a phone without zooming
   - [ ] Each person knows what to tap next, without being told
   - [ ] The customer understands the tracking page without anyone explaining it
   - [ ] It still works on a phone hotspot
 
-**Sun Nov 1: Freeze and rehearse**
+**Sun Nov 1: Polish, freeze and rehearse**
+- [ ] Morning: phone and laptop layout polish, and bug fixes from the run-through
+- [x] QR code that opens the request page ([docs/qr/](docs/qr/))
 - [ ] Code freeze at noon; only fixes after that
 - [ ] Final rehearsal on a real phone and laptop: customer on one phone, technician on a second phone, owner and dispatcher on the laptop
 - [ ] Record a screen video of the full flow as a backup
