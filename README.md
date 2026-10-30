@@ -437,7 +437,7 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 
 > **Status, Thu Oct 29 (evening):** Wednesday's data and customer flow is finished, a day late, so Thursday's AI autofill and dispatch work moves to Friday and Saturday. The plan below puts **the core loop first** (request → dispatcher → owner → technician → customer confirms). **AI autofill and suggestion scoring come after it.** If time runs short, they're the first to cut: the demo still works with typed-in details and the dispatcher choosing the business.
 >
-> **Don't push `main` until Friday's deploy.** Three commits (ratings in Postgres, request form, tracking page) need the `main` database's tables first; pushing earlier breaks the live site.
+> **Fri Oct 30:** the dispatcher and owner pages are built, and the **first production deploy is live** at https://workflow.aihuachen.com with the `main` database. Pushing to `main` now deploys straight away; if a commit adds a migration, update the live database first (see [Run locally](#run-locally), "Updating the live database").
 
 **Tue Oct 27: Workspace and app shell**
 - [x] Workspace: pnpm, Turborepo, TypeScript, Next.js, MUI
@@ -478,10 +478,10 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
   - [x] Only the owner's own business's jobs (filtered by `businessId`); customer contact details appear only after accepting
   - [x] Decline asks for an optional reason, saved in the job's history; Book a return visit after a problem
   - [x] Technicians get a basic list of their visits on the same page (the phone-first version is Saturday's)
-- [ ] **First production deploy** (Vercel + Neon)
-  - [ ] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
-  - [ ] Apply migrations and demo data to `main` (`pnpm db:deploy`, then `pnpm db:seed`), without the password going through chat
-  - [ ] Push `main`, and check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
+- [x] **First production deploy** (Vercel + Neon), live Oct 30
+  - [x] *You:* in Vercel, check **Settings → Build and Deployment → Root Directory** is empty (it was `apps/web`)
+  - [x] Apply migrations and demo data to `main` (`pnpm db:deploy`, then `pnpm db:seed`), without the password going through chat
+  - [x] Push `main`, and check the live site can reach the `main` database. If it fails with a password error, the Neon integration didn't pick up the reset `main` password: in Vercel, open **Storage** → the Neon database and reconnect it to the project, then redeploy
 - [ ] *You:* test the live link on your phone
 
 **Sat Oct 31: Technician and customer, then the extras**
