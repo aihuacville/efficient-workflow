@@ -700,11 +700,13 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Rate limiting on public endpoints, and storing photos (notice photos, and the technician's optional photo of the finished work)
 - [ ] Integration tests for orders and permissions
 - [ ] Automatic checks on every push and pull request (GitHub Actions: tests, typecheck, build), so a broken commit can't deploy
-- [ ] Privacy policy and terms pages, and a line on the request form saying how contact details are used
+- [x] Privacy page ([app/(public)/privacy/page.tsx](app/(public)/privacy/page.tsx)), linked from the footer of customer pages and from the contact step of the request form. Keep it in step with what's stored and who sees it
+  - [ ] *You:* in Vercel, add `PRIVACY_CONTACT_EMAIL` (the address people write to for a copy or deletion of their details), then redeploy. Until it's set, the page doesn't show an address
+  - [ ] Terms page
 - [ ] Error tracking (for example Sentry), so failures raise an alert instead of a customer complaint
 - [ ] Database backups: check Neon's restore window on our plan, and try a restore once before real data depends on it
 - [ ] Staff hear about new work without reloading: the dispatcher about new requests, owners about offers (with email notifications). Pages already refresh every 30 seconds; this is about alerts when the page isn't open
-- [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request
+- [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request (then state the period on the privacy page)
 - [ ] Move open TODOs and demo feedback to GitHub Issues; work on branches with a pull request for every change, and protect `main` (see [Decisions](#tracking-work-feature-requests-and-pull-requests-decided-oct-30-2026))
 - [ ] Onboard 1–3 businesses in one city, print QR codes, run a 6-week pilot
 
