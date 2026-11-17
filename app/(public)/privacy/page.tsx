@@ -3,11 +3,12 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Metadata } from "next";
+import { GA_ID } from "@/lib/analytics";
 
 export const metadata: Metadata = { title: "Privacy" };
 
 // Kept in step with the code: if what's stored or who sees it changes (lib/orders/queries.ts,
-// lib/my-requests.ts, lib/session.ts, prisma/schema.prisma), update this page too.
+// lib/my-requests.ts, lib/session.ts, lib/analytics.ts, prisma/schema.prisma), update this page too.
 
 const UPDATED = "November 17, 2026";
 
@@ -56,20 +57,49 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     title: "What we don't do",
     body: (
       <ul>
-        <li>We don&apos;t sell your details or use them for advertising.</li>
+        <li>
+          We don&apos;t sell or share your personal information, as California law defines those
+          terms, and we don&apos;t use it for advertising.
+        </li>
         <li>We don&apos;t send marketing messages.</li>
-        <li>We don&apos;t use tracking or advertising cookies.</li>
+        <li>We don&apos;t use advertising cookies.</li>
       </ul>
     ),
   },
   {
-    title: "On your device",
+    title: "Cookies and storage on your device",
     body: (
-      <Typography>
-        This browser remembers the requests you&apos;ve sent or opened (the service and date, not
-        the address), so you can find them again from the home page. It stays on this device and is
-        never sent to us. Clearing your browser&apos;s site data removes it.
-      </Typography>
+      <ul>
+        <li>
+          <strong>Your requests.</strong> This browser remembers the requests you&apos;ve sent or
+          opened (the service and date, not the address), so you can find them again from the home
+          page. It stays on this device and is never sent to us. Clearing your browser&apos;s site
+          data removes it.
+        </li>
+        {GA_ID ? (
+          <li>
+            <strong>Analytics.</strong> We use Google Analytics to count visits and see which pages
+            people use, so we can improve the service. It sets cookies whose names start with{" "}
+            <code>_ga</code>, which last up to two years. We never send it your name, contact
+            details, address or tracking link, and its advertising features are off. To opt out,
+            turn on Global Privacy Control in your browser (we then don&apos;t load Google Analytics
+            at all), or use{" "}
+            <Link href="https://tools.google.com/dlpage/gaoptout">
+              Google&apos;s opt-out add-on
+            </Link>
+            .
+          </li>
+        ) : (
+          <li>
+            <strong>No cookies for customers.</strong> We don&apos;t use analytics or other cookies
+            on customer pages.
+          </li>
+        )}
+        <li>
+          <strong>Staff who sign in</strong> get one cookie that keeps them signed in for a week.
+          Signing out removes it.
+        </li>
+      </ul>
     ),
   },
   {
