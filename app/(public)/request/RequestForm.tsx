@@ -23,7 +23,9 @@ import {
   SERVICE_TYPES,
   STEP_FIELDS,
 } from "@/lib/orders/request";
+import { type AutofillFields, mergeAutofill } from "@/lib/autofill/notice";
 import { rememberRequest } from "@/lib/my-requests";
+import { shrinkPhoto } from "./shrinkPhoto";
 
 const STEPS = ["Photo", "Check details", "Contact info"] as const;
 
@@ -45,6 +47,13 @@ export function RequestForm() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
+  // Reading the photo: the details it filled in are marked so the customer checks them.
+  const [reading, setReading] = useState<"idle" | "reading" | "done" | "failed">("idle");
+  const [readMessage, setReadMessage] = useState("");
+  const [filledIn, setFilledIn] = useState<(keyof AutofillFields)[]>([]);
+  const readId = useRef(0);
+  const fieldsRef = useRef(fields);
+  fieldsRef.current = fields;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -72,15 +81,61 @@ export function RequestForm() {
     onChange: (e: ChangeEvent<HTMLInputElement>) => {
       setFields((f) => ({ ...f, [name]: e.target.value }));
       setServerErrors(({ [name]: _, ...rest }) => rest);
+      setFilledIn((names) => names.filter((n) => n !== name));
     },
     error: Boolean(errors[name]),
-    helperText: errors[name],
+    helperText:
+      errors[name] ??
+      ((filledIn as string[]).includes(name) ? "From your photo. Check it's right." : undefined),
     fullWidth: true,
   });
 
   function choosePhoto(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) setPhotoUrl(URL.createObjectURL(file));
+    if (!file) return;
+    setPhotoUrl(URL.createObjectURL(file));
+    void readPhoto(file);
+  }
+
+  /** Sends the photo to be read, and fills in the empty detail fields from it. */
+  async function readPhoto(file: File) {
+    const id = ++readId.current; // a newer photo replaces this one's answer
+    setReading("reading");
+    setReadMessage("");
+    try {
+      const body = new FormData();
+      body.append("photo", await shrinkPhoto(file), "notice.jpg");
+      const res = await fetch("/api/autofill", {
+        method: "POST",
+        body,
+        signal: AbortSignal.timeout(35_000),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        fields?: AutofillFields;
+        error?: string;
+      };
+      if (id !== readId.current) return;
+      if (!res.ok || !data.fields) {
+        throw new Error(data.error ?? "We couldn't read the notice. Type the details instead.");
+      }
+      const merged = mergeAutofill(fieldsRef.current, data.fields);
+      setFields(merged.fields);
+      setFilledIn(merged.filledIn);
+      setReading("done");
+      setReadMessage(
+        merged.filledIn.length > 0
+          ? "We filled in what we could read. Check it on the next step."
+          : "You've already filled in the details, so we left them as they are.",
+      );
+    } catch (e) {
+      if (id !== readId.current) return;
+      setReading("failed");
+      setReadMessage(
+        e instanceof Error && !["TimeoutError", "AbortError", "TypeError"].includes(e.name)
+          ? e.message
+          : "We couldn't read the notice. Type the details instead.",
+      );
+    }
   }
 
   function next() {
@@ -174,8 +229,8 @@ export function RequestForm() {
           {step === 0 && (
             <>
               <Typography color="text.secondary">
-                Optional. Soon we&apos;ll fill in the details from your photo. For now, it stays on
-                your phone.
+                Optional. We&apos;ll read the notice and fill in the details for you to check. The
+                photo is only used for this and isn&apos;t saved.
               </Typography>
               {photoUrl && (
                 <Box
@@ -200,11 +255,39 @@ export function RequestForm() {
                 {/* No `capture`, so phones offer both the camera and the photo library. */}
                 <input type="file" accept="image/*" hidden onChange={choosePhoto} />
               </Button>
+              {reading === "reading" && (
+                <Box role="status">
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Reading your notice… You can go on and type the details meanwhile.
+                  </Typography>
+                  <LinearProgress />
+                </Box>
+              )}
+              {reading === "done" && (
+                <Alert severity="success" role="status">
+                  {readMessage}
+                </Alert>
+              )}
+              {reading === "failed" && (
+                <Alert severity="info" role="status">
+                  {readMessage}
+                </Alert>
+              )}
             </>
           )}
 
           {step === 1 && (
             <>
+              {reading === "reading" && (
+                <Typography variant="body2" color="text.secondary" role="status">
+                  Still reading your photo. We&apos;ll fill in any empty fields when it&apos;s done.
+                </Typography>
+              )}
+              {filledIn.length > 0 && (
+                <Alert severity="info">
+                  We filled in some details from your photo. Please check they&apos;re right.
+                </Alert>
+              )}
               <TextField
                 {...field("serviceType")}
                 select

@@ -109,6 +109,8 @@ Then open http://localhost:3000. Press `Ctrl+C` to stop the server.
 
 There are no per-person passwords: the switcher sets a cookie saying who you are ([lib/session.ts](lib/session.ts)). Real sign-in replaces it in the pilot.
 
+**AI autofill** ([lib/autofill/](lib/autofill/), `POST /api/autofill`): when `ANTHROPIC_API_KEY` is set, a photo chosen on the request form's first step is shrunk in the browser, sent to Claude, and the details it can read (service, address, deadline, notes) fill in the empty fields on the next step, marked "From your photo" for the customer to check. Contact details are never filled in, and the photo isn't stored. Without the key the endpoint answers 503 and the form says to type the details. To try it locally, add `ANTHROPIC_API_KEY=...` to `.env.local`.
+
 **Demo password for the staff side** ([middleware.ts](middleware.ts)): when the `DEMO_PASSWORD` environment variable is set, `/dispatch`, `/jobs`, the switcher and the staff actions API ask for it with the browser's own sign-in prompt (any username). Customer pages (home, request form, tracking) stay open, so the audience can scan the QR code and try them. On a laptop it's usually not set, so nothing is protected. To try it locally: `DEMO_PASSWORD=something pnpm dev`.
 
 **To try the request form:**
@@ -663,7 +665,11 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
   - [ ] Scoring rules: offers the service, distance, rating, free time; tested
   - [ ] Show the suggestion with its reasons; **Approve offer** in one tap, or **Choose another**
   - [ ] Show each business's rating in the offer dialog, for example "ABC Fire Safety ★ 4.7 (12 reviews)", using the same reviews as the review list. The owner's own average already shows in **Reviews** on their page (done Oct 30)
-- [ ] AI autofill from a photo of the notice *(cut first if short of time)*
+- [ ] AI autofill from a photo of the notice (branch `feat/ai-autofill`)
+  - [x] `POST /api/autofill`: checks the photo, asks Claude (`claude-opus-5-5`, low effort, JSON schema answer), and cleans up the answer so the form never gets a value it would reject ([lib/autofill/notice.ts](lib/autofill/notice.ts), tested)
+  - [x] Request form: reads the photo as soon as it's chosen, fills only empty fields, marks them "From your photo"; falls back to typing on failure or after 35 seconds
+  - [ ] *You:* add `ANTHROPIC_API_KEY` to `.env.local` and to Vercel (**Production**), and set a monthly spending limit on the key first: the endpoint is public until rate limiting lands in the pilot
+  - [ ] Try it with 2–3 real notice photos on a phone
 - [ ] *You:* find 2–3 real notice photos for the demo
 - [x] Demo data: a few jobs at different stages, so every page has something to show (done Oct 30: 16 jobs across three businesses, each with a realistic history; readable tracking links for each stage)
 - [x] Remove the `/track/demo` sample page (the real tracking page replaces it). `/track/demo` is now the real tracking page of a confirmed demo job, and the review list moved to the owner's page as **Reviews** (done Oct 30)
