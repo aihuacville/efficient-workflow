@@ -11,6 +11,13 @@ export const SERVICE_TYPES = [
 /** The one service whose notices carry a TRAC number. */
 export const BACKFLOW = "Backflow testing";
 
+/** Services that come with a notice giving a due date, so the due date is required for them. */
+export const DUE_DATE_REQUIRED: readonly string[] = ["Fire safety inspection", BACKFLOW];
+
+export function needsDueDate(serviceType: string) {
+  return DUE_DATE_REQUIRED.includes(serviceType.trim());
+}
+
 /** The form's fields, as typed. Optional ones are empty strings when left blank. */
 export type RequestFields = {
   serviceType: string;
@@ -84,12 +91,19 @@ export function fieldErrors(fields: RequestFields): FieldErrors {
     errors.serviceType = "Choose a service.";
   }
   if (f.address.length < 5) errors.address = "Enter the address where the work is needed.";
-  if (f.dueDate && !isRealDate(f.dueDate)) errors.dueDate = "Enter a real date, or leave it empty.";
+  if (!f.dueDate) {
+    if (needsDueDate(f.serviceType)) errors.dueDate = "Enter the due date on your notice.";
+  } else if (!isRealDate(f.dueDate)) {
+    errors.dueDate = needsDueDate(f.serviceType)
+      ? "Enter a real date."
+      : "Enter a real date, or leave it empty.";
+  }
   // Only backflow testing has a TRAC number; for other services the field is hidden and ignored.
-  if (f.serviceType === BACKFLOW && f.tracNumber) {
+  if (f.serviceType === BACKFLOW) {
     const trac = normalizeTracNumber(f.tracNumber);
-    if (!/^\d+$/.test(trac) || trac.length > MAX_TRAC_DIGITS) {
-      errors.tracNumber = "Enter the TRAC number's digits, like 17408, or leave it empty.";
+    if (!trac) errors.tracNumber = "Enter the TRAC number on your notice.";
+    else if (!/^\d+$/.test(trac) || trac.length > MAX_TRAC_DIGITS) {
+      errors.tracNumber = "Enter the TRAC number's digits, like 17408.";
     }
   }
   if (!f.name) errors.name = "Enter your name.";

@@ -23,8 +23,24 @@ describe("fieldErrors", () => {
     expect(fieldErrors(valid)).toEqual({});
   });
 
-  it("lets the due date, notes and email be empty", () => {
-    expect(fieldErrors({ ...valid, dueDate: "", notes: "", email: "" })).toEqual({});
+  it("lets the notes and email be empty", () => {
+    expect(fieldErrors({ ...valid, notes: "", email: "" })).toEqual({});
+  });
+
+  it("requires the due date for fire safety inspections and backflow testing", () => {
+    for (const serviceType of ["Fire safety inspection", "Backflow testing"]) {
+      expect(fieldErrors({ ...valid, serviceType, tracNumber: "17408", dueDate: "" })).toEqual({
+        dueDate: "Enter the due date on your notice.",
+      });
+    }
+  });
+
+  it("lets the due date be empty for other services", () => {
+    for (const serviceType of ["Lawn care", "Other"]) {
+      expect(fieldErrors({ ...valid, serviceType, dueDate: "" })).toEqual({});
+    }
+    const result = parseOrderRequest({ ...valid, serviceType: "Lawn care", dueDate: "" });
+    expect(result.ok && result.order.dueDate).toBeNull();
   });
 
   it("lists every required field when the form is empty", () => {
@@ -42,7 +58,7 @@ describe("fieldErrors", () => {
   it("refuses dates that don't exist", () => {
     for (const dueDate of ["2026-02-30", "11/15/2026", "soon"]) {
       expect(fieldErrors({ ...valid, dueDate })).toEqual({
-        dueDate: "Enter a real date, or leave it empty.",
+        dueDate: "Enter a real date.",
       });
     }
   });
@@ -87,9 +103,8 @@ describe("parseOrderRequest", () => {
   });
 
   it("saves empty optional fields as null", () => {
-    const result = parseOrderRequest({ ...valid, dueDate: "", notes: undefined, email: "" });
+    const result = parseOrderRequest({ ...valid, notes: undefined, email: "" });
     expect(result.ok && result.order).toMatchObject({
-      dueDate: null,
       notes: null,
       customer: { email: null },
     });
@@ -138,9 +153,16 @@ describe("TRAC number", () => {
     expect(fieldErrors({ ...backflow, tracNumber: "1".repeat(21) })).toHaveProperty("tracNumber");
   });
 
-  it("refuses letters, and is optional", () => {
-    expect(fieldErrors({ ...backflow, tracNumber: "ABC-17408" })).toHaveProperty("tracNumber");
-    expect(fieldErrors({ ...backflow, tracNumber: "" })).toEqual({});
+  it("refuses letters, and is required for backflow testing", () => {
+    expect(fieldErrors({ ...backflow, tracNumber: "ABC-17408" })).toEqual({
+      tracNumber: "Enter the TRAC number's digits, like 17408.",
+    });
+    expect(fieldErrors({ ...backflow, tracNumber: "" })).toEqual({
+      tracNumber: "Enter the TRAC number on your notice.",
+    });
+    expect(fieldErrors({ ...backflow, tracNumber: "TRAC#" })).toEqual({
+      tracNumber: "Enter the TRAC number on your notice.",
+    });
   });
 
   it("saves the digits for backflow testing", () => {

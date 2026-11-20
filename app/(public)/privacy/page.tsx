@@ -25,7 +25,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <ul>
           <li>
             The service you need, the address, the due date on your notice, any notes, and for
-            backflow testing, the TRAC number on your notice if you give it.
+            backflow testing, the TRAC number on your notice.
           </li>
           <li>Your name and phone number, and your email if you give it.</li>
           <li>Each step of the job (for example, when it was scheduled and finished).</li>

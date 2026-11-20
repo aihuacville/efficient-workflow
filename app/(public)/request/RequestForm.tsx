@@ -31,6 +31,7 @@ import {
   type FieldErrors,
   fieldErrors,
   MAX_LENGTH,
+  needsDueDate,
   normalizeTracNumber,
   type RequestFields,
   SERVICE_TYPES,
@@ -111,7 +112,11 @@ export function RequestForm() {
   function hint(name: keyof RequestFields): string | undefined {
     if (errors[name]) return errors[name];
     if ((filledIn as string[]).includes(name)) return "From your photo. Check it's right.";
-    const required = name === "serviceType" || name === "address";
+    const required =
+      name === "serviceType" ||
+      name === "address" ||
+      (name === "dueDate" && needsDueDate(fields.serviceType)) ||
+      (name === "tracNumber" && fields.serviceType === BACKFLOW);
     if (reading === "done" && required && !fields[name]) {
       return "We couldn't read this from your photo. Please fill it in.";
     }
@@ -298,13 +303,13 @@ export function RequestForm() {
       <TextField
         {...field("dueDate")}
         type="date"
-        label="Due date (optional)"
+        label={needsDueDate(fields.serviceType) ? "Due date" : "Due date (optional)"}
         slotProps={{ inputLabel: { shrink: true } }}
       />
       {isBackflow && (
         <TextField
           {...field("tracNumber")}
-          label="TRAC number (optional)"
+          label="TRAC number"
           helperText={
             hint("tracNumber") ?? "On your backflow test notice, for example TRAC# 17408."
           }

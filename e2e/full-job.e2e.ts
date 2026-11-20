@@ -41,6 +41,7 @@ test("a job goes from request to rating", async ({ page, browser }) => {
   await page.getByRole("button", { name: "Skip, enter the details" }).click();
   await page.getByLabel("Service needed").selectOption("Fire safety inspection");
   await page.getByLabel("Address where the work is needed").fill(address);
+  await page.getByLabel("Due date").fill("2026-12-15");
   await page.getByRole("button", { name: "Details look right" }).click();
   await expect(page.getByText(address)).toBeVisible(); // the summary of the details
   await page.getByLabel("Your name").fill("E2E Customer");
