@@ -65,6 +65,7 @@ const staffJobFields = {
   address: true,
   dueDate: true,
   notes: true,
+  tracNumber: true,
   updatedAt: true,
   visitStart: true,
   businessId: true,
@@ -99,10 +100,10 @@ export async function listBusinessOrders(businessId: string) {
       },
     },
   });
-  // A business sees the customer's contact details, and their tracking link, only once it has
-  // accepted the job.
+  // A business sees the customer's contact details, their tracking link and the TRAC number (an
+  // access code to the water utility's system) only once it has accepted the job.
   return orders.map((o) =>
-    o.status === "OFFERED" ? { ...o, customer: null, trackingToken: null } : o,
+    o.status === "OFFERED" ? { ...o, customer: null, trackingToken: null, tracNumber: null } : o,
   );
 }
 

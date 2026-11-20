@@ -8,12 +8,17 @@ export const SERVICE_TYPES = [
   "Other",
 ] as const;
 
+/** The one service whose notices carry a TRAC number. */
+export const BACKFLOW = "Backflow testing";
+
 /** The form's fields, as typed. Optional ones are empty strings when left blank. */
 export type RequestFields = {
   serviceType: string;
   address: string;
   dueDate: string;
   notes: string;
+  /** Backflow testing only: the utility's Tester Remote Access Code, digits like 17408. */
+  tracNumber: string;
   name: string;
   phone: string;
   email: string;
@@ -23,7 +28,7 @@ export type FieldErrors = Partial<Record<keyof RequestFields, string>>;
 
 /** Which fields each form step asks for, so the form can check one step at a time. */
 export const STEP_FIELDS = {
-  details: ["serviceType", "address", "dueDate", "notes"],
+  details: ["serviceType", "address", "dueDate", "tracNumber", "notes"],
   contact: ["name", "phone", "email"],
 } as const satisfies Record<string, readonly (keyof RequestFields)[]>;
 
@@ -32,6 +37,7 @@ export const MAX_LENGTH: Record<keyof RequestFields, number> = {
   address: 200,
   dueDate: 10,
   notes: 1000,
+  tracNumber: 30,
   name: 100,
   phone: 30,
   email: 200,
@@ -42,6 +48,7 @@ export const EMPTY_REQUEST: RequestFields = {
   address: "",
   dueDate: "",
   notes: "",
+  tracNumber: "",
   name: "",
   phone: "",
   email: "",
@@ -51,6 +58,19 @@ function isRealDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T12:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+/** The longest TRAC number we accept. Their length varies between water providers. */
+const MAX_TRAC_DIGITS = 20;
+
+/**
+ * A TRAC number as just its digits: "TRAC# 17408", "TRAC no. 17408" and "17 408" all become
+ * "17408". Anything else is returned trimmed but otherwise unchanged, so the check can reject it.
+ */
+export function normalizeTracNumber(value: string): string {
+  const withoutLabel = value.trim().replace(/^TRAC\s*(#|no\.?|number)?\s*:?\s*/i, "");
+  const digits = withoutLabel.replace(/[\s-]/g, "");
+  return /^\d+$/.test(digits) ? digits : withoutLabel;
 }
 
 /** What's wrong with each field, in plain words. An empty object means it's all fine. */
@@ -65,6 +85,13 @@ export function fieldErrors(fields: RequestFields): FieldErrors {
   }
   if (f.address.length < 5) errors.address = "Enter the address where the work is needed.";
   if (f.dueDate && !isRealDate(f.dueDate)) errors.dueDate = "Enter a real date, or leave it empty.";
+  // Only backflow testing has a TRAC number; for other services the field is hidden and ignored.
+  if (f.serviceType === BACKFLOW && f.tracNumber) {
+    const trac = normalizeTracNumber(f.tracNumber);
+    if (!/^\d+$/.test(trac) || trac.length > MAX_TRAC_DIGITS) {
+      errors.tracNumber = "Enter the TRAC number's digits, like 17408, or leave it empty.";
+    }
+  }
   if (!f.name) errors.name = "Enter your name.";
   const digits = f.phone.replace(/\D/g, "").length;
   if (digits < 7 || digits > 15) errors.phone = "Enter a phone number we can reach you on.";
@@ -73,6 +100,7 @@ export function fieldErrors(fields: RequestFields): FieldErrors {
   }
 
   for (const key of Object.keys(MAX_LENGTH) as (keyof RequestFields)[]) {
+    if (key === "tracNumber" && f.serviceType !== BACKFLOW) continue; // hidden, and not saved
     if (f[key].length > MAX_LENGTH[key]) {
       errors[key] = `Keep this under ${MAX_LENGTH[key]} characters.`;
     }
@@ -86,6 +114,7 @@ export type NewOrder = {
   address: string;
   dueDate: Date | null;
   notes: string | null;
+  tracNumber: string | null;
   customer: { name: string; phone: string; email: string | null };
 };
 
@@ -115,6 +144,10 @@ export function parseOrderRequest(
       // Noon UTC, so the date stays the same in every US time zone.
       dueDate: fields.dueDate ? new Date(`${fields.dueDate}T12:00:00Z`) : null,
       notes: fields.notes || null,
+      tracNumber:
+        fields.serviceType === BACKFLOW && fields.tracNumber
+          ? normalizeTracNumber(fields.tracNumber)
+          : null,
       customer: { name: fields.name, phone: fields.phone, email: fields.email || null },
     },
   };

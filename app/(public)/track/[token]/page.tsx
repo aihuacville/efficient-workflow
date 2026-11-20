@@ -82,7 +82,7 @@ export default async function TrackPage({ params }: { params: Promise<{ token: s
           <Typography color="text.secondary">{order.address}</Typography>
           {order.dueDate && (
             <Typography color="text.secondary">
-              Deadline: {/* Saved as noon UTC, so format in UTC to show the date as entered. */}
+              Due date: {/* Saved as noon UTC, so format in UTC to show the date as entered. */}
               {order.dueDate.toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" })}
             </Typography>
           )}

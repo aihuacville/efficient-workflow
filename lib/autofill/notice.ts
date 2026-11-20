@@ -2,7 +2,13 @@
 // checks the photo, says what to ask Claude, and cleans up the answer. The call itself is in
 // read-notice.ts.
 
-import { MAX_LENGTH, type RequestFields, SERVICE_TYPES } from "../orders/request";
+import {
+  BACKFLOW,
+  MAX_LENGTH,
+  normalizeTracNumber,
+  type RequestFields,
+  SERVICE_TYPES,
+} from "../orders/request";
 
 /** Image types Claude can read. Phones send JPEG after the browser shrinks the photo. */
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
@@ -15,7 +21,10 @@ export const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 export const MAX_PHOTO_EDGE = 1568;
 
 /** The fields autofill may fill in. Never contact details: those are the customer's own. */
-export type AutofillFields = Pick<RequestFields, "serviceType" | "address" | "dueDate" | "notes">;
+export type AutofillFields = Pick<
+  RequestFields,
+  "serviceType" | "address" | "dueDate" | "tracNumber" | "notes"
+>;
 
 /** What's wrong with an uploaded photo, in plain words, or null if it's fine. */
 export function photoProblem(photo: { type: string; size: number }): string | null {
@@ -33,8 +42,9 @@ Fill in only what the notice itself says. Leave a field as an empty string when 
 
 - serviceType: the one service the notice asks for, from the list. Use "Other" if it asks for a service that isn't listed, and "" if the photo isn't a notice or you can't tell.
 - address: the address of the property where the work is needed, not the address of whoever sent the notice. One line, as written on the notice.
-- dueDate: the deadline for the work, as YYYY-MM-DD. Only a date the notice states; don't work one out from wording like "within 30 days".
-- notes: one or two short sentences for the business doing the work: what the notice asks for, and any reference or permit number. No names, phone numbers or email addresses.`;
+- dueDate: the date the work or test is due. Notices label it in different ways, for example "Due date", "Due by", "Test due", "Must be completed by", "Compliance date" or "Deadline". Write it as YYYY-MM-DD: a date printed as 12/15/2026 or December 15, 2026 is 2026-12-15 (dates on these notices are month first). Only a date the notice states; don't work one out from wording like "within 30 days". If the notice gives only a month and year, leave dueDate empty and say "Due <month> <year>" in notes.
+- tracNumber: for backflow testing notices only, the TRAC number (Tester Remote Access Code), usually printed as "TRAC#" followed by digits, for example "TRAC# 17408". Give just the digits. Only a number the notice labels as the TRAC number; never an account, permit, meter or serial number. "" if there isn't one.
+- notes: one or two short sentences for the business doing the work: what the notice asks for, and any reference or permit number other than the TRAC number. No names, phone numbers or email addresses.`;
 
 /** The answer's shape, sent to Claude as a JSON schema so the reply always matches it. */
 export const NOTICE_SCHEMA = {
@@ -43,9 +53,10 @@ export const NOTICE_SCHEMA = {
     serviceType: { type: "string", enum: [...SERVICE_TYPES, ""] },
     address: { type: "string" },
     dueDate: { type: "string" },
+    tracNumber: { type: "string" },
     notes: { type: "string" },
   },
-  required: ["serviceType", "address", "dueDate", "notes"],
+  required: ["serviceType", "address", "dueDate", "tracNumber", "notes"],
   additionalProperties: false,
 } as const;
 
@@ -53,6 +64,33 @@ function isRealDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T12:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/**
+ * A due date as YYYY-MM-DD, from the formats notices use: 2026-12-15, 12/15/2026, 12-15-26,
+ * December 15, 2026, Dec. 15 2026 or 15 December 2026. Numeric dates are read month first, as
+ * on US notices. Returns "" for anything else, including a month and year with no day.
+ */
+export function toIsoDate(value: string): string {
+  const v = value.trim().replace(/(\d)(st|nd|rd|th)\b/gi, "$1");
+  let year: number, month: number, day: number;
+  let m: RegExpMatchArray | null;
+  if ((m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+    [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  } else if ((m = v.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/))) {
+    [month, day, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (year < 100) year += 2000;
+  } else if ((m = v.match(/^([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})$/i))) {
+    [month, day, year] = [MONTHS.indexOf(m[1]!.toLowerCase()) + 1, Number(m[2]), Number(m[3])];
+  } else if ((m = v.match(/^(\d{1,2})\s+([a-z]{3})[a-z]*\.?,?\s+(\d{4})$/i))) {
+    [day, month, year] = [Number(m[1]), MONTHS.indexOf(m[2]!.toLowerCase()) + 1, Number(m[3])];
+  } else {
+    return "";
+  }
+  const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return month >= 1 && isRealDate(iso) ? iso : "";
 }
 
 function text(value: unknown, max: number) {
@@ -71,13 +109,17 @@ export function toAutofillFields(answer: unknown): AutofillFields {
     unknown
   >;
   const serviceType = text(raw.serviceType, MAX_LENGTH.serviceType);
-  const dueDate = text(raw.dueDate, MAX_LENGTH.dueDate);
+  // Read the date before shortening anything: "December 15, 2026" is longer than the field.
+  const dueDate = toIsoDate(text(raw.dueDate, 40));
   const address = text(raw.address, MAX_LENGTH.address);
+  const trac = normalizeTracNumber(text(raw.tracNumber, MAX_LENGTH.tracNumber));
   return {
     serviceType: (SERVICE_TYPES as readonly string[]).includes(serviceType) ? serviceType : "",
     // Too short to be an address means it's noise; the form would reject it anyway.
     address: address.length >= 5 ? address : "",
-    dueDate: isRealDate(dueDate) ? dueDate : "",
+    dueDate,
+    // Only backflow notices have one, and only digits count; anything else is likely a misread.
+    tracNumber: serviceType === BACKFLOW && /^\d{1,20}$/.test(trac) ? trac : "",
     notes: text(raw.notes, MAX_LENGTH.notes),
   };
 }

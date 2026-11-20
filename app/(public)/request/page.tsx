@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "New request" };
 
 export default function RequestPage() {
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 3, md: 6 } }}>
+    <Container maxWidth="md" sx={{ py: { xs: 3, md: 6 } }}>
       <Typography variant="h1" gutterBottom>
         New service request
       </Typography>

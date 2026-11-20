@@ -15,6 +15,7 @@ import { VisitCard } from "@/components/VisitCard";
 import { listVisitors } from "@/lib/businesses";
 import { formatDate, timeAgo } from "@/lib/format";
 import { listBusinessOrders, listTechnicianOrders } from "@/lib/orders/queries";
+import { BACKFLOW } from "@/lib/orders/request";
 import { type Actor, nextActions, STAFF_STATUS_LABELS } from "@/lib/orders/status";
 import { getCurrentUser, type SessionUser, toActor } from "@/lib/session";
 
@@ -31,8 +32,12 @@ const service: Column<Pick<Job, "serviceType">> = {
 };
 const address: Column<Pick<Job, "address">> = { label: "Address", render: (o) => o.address };
 const due: Column<Pick<Job, "dueDate">> = {
-  label: "Deadline",
+  label: "Due date",
   render: (o) => (o.dueDate ? formatDate(o.dueDate) : "None given"),
+};
+const trac: Column<Pick<Job, "serviceType" | "tracNumber">> = {
+  label: "TRAC number",
+  render: (o) => o.tracNumber ?? (o.serviceType === BACKFLOW ? "Not given" : "Not needed"),
 };
 const visit: Column<Pick<Job, "visitStart">> = {
   label: "Visit",
@@ -122,7 +127,7 @@ async function OwnerJobs({ user, businessId }: { user: SessionUser; businessId: 
             rows={toSchedule}
             getKey={(o) => o.id}
             empty="Nothing to schedule."
-            columns={[service, address, due, customer]}
+            columns={[service, address, due, customer, trac]}
             actions={actions}
           />
         </Section>
@@ -139,6 +144,7 @@ async function OwnerJobs({ user, businessId }: { user: SessionUser; businessId: 
               { label: "Technician", render: (o) => o.technician?.name },
               status,
               customer,
+              trac,
             ]}
             actions={actions}
           />

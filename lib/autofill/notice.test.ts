@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_REQUEST } from "../orders/request";
 import {
   isEmptyAutofill,
+  toIsoDate,
   MAX_PHOTO_BYTES,
   mergeAutofill,
   photoProblem,
@@ -28,12 +29,14 @@ describe("toAutofillFields", () => {
         serviceType: "Backflow testing",
         address: "  12 Elm St,\n Springfield ",
         dueDate: "2026-12-15",
+        tracNumber: "TRAC# 17408",
         notes: "Annual backflow test required. Ref #4471.",
       }),
     ).toEqual({
       serviceType: "Backflow testing",
       address: "12 Elm St, Springfield",
       dueDate: "2026-12-15",
+      tracNumber: "17408",
       notes: "Annual backflow test required. Ref #4471.",
     });
   });
@@ -44,9 +47,10 @@ describe("toAutofillFields", () => {
         serviceType: "Chimney sweeping",
         address: "12",
         dueDate: "2026-02-30",
+        tracNumber: "17408",
         notes: 42,
       }),
-    ).toEqual({ serviceType: "", address: "", dueDate: "", notes: "" });
+    ).toEqual({ serviceType: "", address: "", dueDate: "", tracNumber: "", notes: "" });
   });
 
   it("copes with an answer that isn't an object", () => {
@@ -54,9 +58,21 @@ describe("toAutofillFields", () => {
       serviceType: "",
       address: "",
       dueDate: "",
+      tracNumber: "",
       notes: "",
     });
     expect(toAutofillFields("Backflow testing")).toEqual(toAutofillFields({}));
+  });
+
+  it("keeps a TRAC number only for backflow testing, and only digits", () => {
+    const backflow = { serviceType: "Backflow testing", address: "12 Elm St" };
+    expect(toAutofillFields({ ...backflow, tracNumber: "1740812" }).tracNumber).toBe("1740812");
+    expect(toAutofillFields({ ...backflow, tracNumber: "TRAC# 17408" }).tracNumber).toBe("17408");
+    expect(toAutofillFields({ ...backflow, tracNumber: "ACCT-2231" }).tracNumber).toBe("");
+    expect(
+      toAutofillFields({ serviceType: "Lawn care", address: "12 Elm St", tracNumber: "17408" })
+        .tracNumber,
+    ).toBe("");
   });
 
   it("shortens values that are too long for the form", () => {
@@ -83,6 +99,7 @@ describe("mergeAutofill", () => {
       serviceType: "Lawn care",
       address: "12 Elm St",
       dueDate: "",
+      tracNumber: "",
       notes: "",
     });
     expect(fields.serviceType).toBe("Lawn care");
@@ -93,10 +110,47 @@ describe("mergeAutofill", () => {
   it("never overwrites what the customer already typed", () => {
     const { fields, filledIn } = mergeAutofill(
       { ...EMPTY_REQUEST, address: "34 Oak Ave", name: "Sam" },
-      { serviceType: "", address: "12 Elm St", dueDate: "", notes: "" },
+      { serviceType: "", address: "12 Elm St", dueDate: "", tracNumber: "", notes: "" },
     );
     expect(fields.address).toBe("34 Oak Ave");
     expect(fields.name).toBe("Sam");
     expect(filledIn).toEqual([]);
+  });
+});
+
+describe("toIsoDate", () => {
+  it("reads the date formats notices use, month first", () => {
+    for (const printed of [
+      "2026-12-15",
+      "12/15/2026",
+      "12-15-2026",
+      "12.15.2026",
+      "12/15/26",
+      "December 15, 2026",
+      "Dec 15 2026",
+      "Dec. 15, 2026",
+      "December 15th, 2026",
+      "15 December 2026",
+    ]) {
+      expect(toIsoDate(printed), printed).toBe("2026-12-15");
+    }
+    expect(toIsoDate("1/5/2027")).toBe("2027-01-05");
+  });
+
+  it("refuses dates that don't exist, and dates without a day", () => {
+    expect(toIsoDate("02/30/2026")).toBe("");
+    expect(toIsoDate("13/01/2026")).toBe("");
+    expect(toIsoDate("December 2026")).toBe("");
+    expect(toIsoDate("Smarch 3, 2026")).toBe("");
+    expect(toIsoDate("within 30 days")).toBe("");
+    expect(toIsoDate("")).toBe("");
+  });
+});
+
+describe("toAutofillFields due date", () => {
+  it("keeps a due date written the way the notice prints it", () => {
+    expect(toAutofillFields({ dueDate: "12/15/2026" }).dueDate).toBe("2026-12-15");
+    // Longer than the form's 10-character field: must be read before it's shortened.
+    expect(toAutofillFields({ dueDate: "December 15, 2026" }).dueDate).toBe("2026-12-15");
   });
 });

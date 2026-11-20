@@ -8,9 +8,10 @@ import { GA_ID } from "@/lib/analytics";
 export const metadata: Metadata = { title: "Privacy" };
 
 // Kept in step with the code: if what's stored or who sees it changes (lib/orders/queries.ts,
-// lib/my-requests.ts, lib/session.ts, lib/analytics.ts, prisma/schema.prisma), update this page too.
+// lib/my-requests.ts, lib/my-contact.ts, lib/session.ts, lib/analytics.ts, lib/autofill/,
+// prisma/schema.prisma), update this page too.
 
-const UPDATED = "November 17, 2026";
+const UPDATED = "November 19, 2026";
 
 /** Where people ask for a copy or deletion of their details. Set it before real customers use the app. */
 const CONTACT_EMAIL = process.env.PRIVACY_CONTACT_EMAIL;
@@ -22,13 +23,18 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <Typography>When you send a request, we store:</Typography>
         <ul>
-          <li>The service you need, the address, the deadline on your notice, and any notes.</li>
+          <li>
+            The service you need, the address, the due date on your notice, any notes, and for
+            backflow testing, the TRAC number on your notice if you give it.
+          </li>
           <li>Your name and phone number, and your email if you give it.</li>
           <li>Each step of the job (for example, when it was scheduled and finished).</li>
           <li>Your rating and comment, if you leave one.</li>
         </ul>
         <Typography>
-          Photos of your notice stay on your phone. We don&apos;t upload or store them.
+          If you add a photo of your notice, we send it to Anthropic, the company whose AI (Claude)
+          reads the details from it, so we can fill in the form for you to check. We don&apos;t
+          store the photo, and only the details you send with your request are saved.
         </Typography>
       </>
     ),
@@ -38,9 +44,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <ul>
         <li>
-          <strong>The business that takes your job</strong> sees your name, phone number, address
-          and notes, so it can do the work. A business offered your job sees only the service,
-          address and notes until it accepts.
+          <strong>The business that takes your job</strong> sees your name, phone number, address,
+          notes and TRAC number, so it can do the work. A business offered your job sees only the
+          service, address and notes until it accepts.
         </li>
         <li>
           <strong>Our dispatchers</strong> see the service, address and notes, to find a business
@@ -75,6 +81,13 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           opened (the service and date, not the address), so you can find them again from the home
           page. It stays on this device and is never sent to us. Clearing your browser&apos;s site
           data removes it.
+        </li>
+        <li>
+          <strong>Your name and phone.</strong> If you leave &ldquo;Remember my name and phone on
+          this phone&rdquo; ticked when you send a request, this browser remembers them to fill in
+          your next request. Not your email or address. It stays on this device and is never sent to
+          us. Untick the box, tap &ldquo;Not you? Clear&rdquo; on the form, or clear your
+          browser&apos;s site data to remove it.
         </li>
         {GA_ID ? (
           <li>

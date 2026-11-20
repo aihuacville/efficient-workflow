@@ -89,6 +89,10 @@ model Order {
   lng         Float?
   dueDate     DateTime?
   notes       String?
+  /// Backflow testing only: the water utility's Tester Remote Access Code (digits, length varies).
+  /// Lets the tester look up the backflow assembly and submit results. Shown to the business only
+  /// after it accepts the job.
+  tracNumber  String?
 
   /// Set when the dispatcher offers the job; cleared if the business declines.
   businessId   String?

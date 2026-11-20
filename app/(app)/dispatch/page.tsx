@@ -21,7 +21,7 @@ type Order = Awaited<ReturnType<typeof listOpenOrders>>[number];
 const service: Column<Order> = { label: "Service", render: (o) => o.serviceType, primary: true };
 const address: Column<Order> = { label: "Address", render: (o) => o.address };
 const due: Column<Order> = {
-  label: "Deadline",
+  label: "Due date",
   render: (o) => (o.dueDate ? formatDate(o.dueDate) : "None given"),
 };
 

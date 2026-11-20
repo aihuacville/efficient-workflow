@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_REQUEST, fieldErrors, parseOrderRequest, type RequestFields } from "./request";
+import {
+  EMPTY_REQUEST,
+  fieldErrors,
+  normalizeTracNumber,
+  parseOrderRequest,
+  type RequestFields,
+} from "./request";
 
 const valid: RequestFields = {
   serviceType: "Fire safety inspection",
   address: "12 Main St, Springfield, IL",
   dueDate: "2026-11-15",
   notes: "Side door is unlocked.",
+  tracNumber: "",
   name: "Sam Rivera",
   phone: "(555) 010-0100",
   email: "sam@example.com",
@@ -73,6 +80,7 @@ describe("parseOrderRequest", () => {
         address: "12 Main St, Springfield, IL",
         dueDate: new Date("2026-11-15T12:00:00Z"),
         notes: "Side door is unlocked.",
+        tracNumber: null,
         customer: { name: "Sam Rivera", phone: "(555) 010-0100", email: "sam@example.com" },
       },
     });
@@ -105,5 +113,44 @@ describe("parseOrderRequest", () => {
       error: "phone must be text",
     });
     for (const body of [null, "hello", 5]) expect(parseOrderRequest(body).ok).toBe(false);
+  });
+});
+
+describe("TRAC number", () => {
+  const backflow = { ...valid, serviceType: "Backflow testing" };
+
+  it("keeps just the digits, with or without a label", () => {
+    expect(normalizeTracNumber("17408")).toBe("17408");
+    expect(normalizeTracNumber(" TRAC# 17408 ")).toBe("17408");
+    expect(normalizeTracNumber("trac no. 17408")).toBe("17408");
+    expect(normalizeTracNumber("TRAC number: 1740 8")).toBe("17408");
+    expect(normalizeTracNumber("17-408")).toBe("17408");
+  });
+
+  it("leaves anything that isn't digits for the check to reject", () => {
+    expect(normalizeTracNumber("TRAC# 17A08")).toBe("17A08");
+  });
+
+  it("accepts any number of digits, up to 20", () => {
+    expect(fieldErrors({ ...backflow, tracNumber: "17408" })).toEqual({});
+    expect(fieldErrors({ ...backflow, tracNumber: "TRAC# 1740812" })).toEqual({});
+    expect(fieldErrors({ ...backflow, tracNumber: "1".repeat(20) })).toEqual({});
+    expect(fieldErrors({ ...backflow, tracNumber: "1".repeat(21) })).toHaveProperty("tracNumber");
+  });
+
+  it("refuses letters, and is optional", () => {
+    expect(fieldErrors({ ...backflow, tracNumber: "ABC-17408" })).toHaveProperty("tracNumber");
+    expect(fieldErrors({ ...backflow, tracNumber: "" })).toEqual({});
+  });
+
+  it("saves the digits for backflow testing", () => {
+    const result = parseOrderRequest({ ...backflow, tracNumber: "TRAC# 17408" });
+    expect(result.ok && result.order.tracNumber).toBe("17408");
+  });
+
+  it("ignores it for other services, where the field is hidden", () => {
+    expect(fieldErrors({ ...valid, tracNumber: "not a number" })).toEqual({});
+    const result = parseOrderRequest({ ...valid, tracNumber: "17408" });
+    expect(result.ok && result.order.tracNumber).toBeNull();
   });
 });

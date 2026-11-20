@@ -41,9 +41,11 @@ test("a job goes from request to rating", async ({ page, browser }) => {
   await page.getByRole("button", { name: "Skip, enter the details" }).click();
   await page.getByLabel("Service needed").selectOption("Fire safety inspection");
   await page.getByLabel("Address where the work is needed").fill(address);
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Details look right" }).click();
+  await expect(page.getByText(address)).toBeVisible(); // the summary of the details
   await page.getByLabel("Your name").fill("E2E Customer");
-  await page.getByLabel("Phone").fill("555-0100");
+  // Exact: "Remember my name and phone on this phone" is a label too.
+  await page.getByLabel("Phone", { exact: true }).fill("555-0100");
   await page.getByRole("button", { name: /Send request/ }).click();
   await expect(page.getByText("Request sent")).toBeVisible();
   const trackingUrl = await page.getByLabel("Your tracking link").inputValue();
