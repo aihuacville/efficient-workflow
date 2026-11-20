@@ -47,6 +47,7 @@ test("a job goes from request to rating", async ({ page, browser }) => {
   await page.getByLabel("Your name").fill("E2E Customer");
   // Exact: "Remember my name and phone on this phone" is a label too.
   await page.getByLabel("Phone", { exact: true }).fill("555-0100");
+  await page.getByRole("radio", { name: "Text" }).check();
   await page.getByRole("button", { name: /Send request/ }).click();
   await expect(page.getByText("Request sent")).toBeVisible();
   const trackingUrl = await page.getByLabel("Your tracking link").inputValue();

@@ -36,6 +36,8 @@ export async function listOpenOrders() {
       address: true,
       dueDate: true,
       notes: true,
+      // The dispatcher works for the platform, so sees it; businesses only after accepting.
+      tracNumber: true,
       createdAt: true,
       updatedAt: true,
       businessId: true,
@@ -71,7 +73,7 @@ const staffJobFields = {
   businessId: true,
   technicianId: true,
   technician: { select: { name: true } },
-  customer: { select: { name: true, phone: true } },
+  customer: { select: { name: true, phone: true, email: true, contactPreference: true } },
 } as const;
 
 /**

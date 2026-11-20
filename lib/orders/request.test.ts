@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_REQUEST,
+  preferenceNote,
   fieldErrors,
   normalizeTracNumber,
   parseOrderRequest,
@@ -16,6 +17,7 @@ const valid: RequestFields = {
   name: "Sam Rivera",
   phone: "(555) 010-0100",
   email: "sam@example.com",
+  contactPreference: "Call",
 };
 
 describe("fieldErrors", () => {
@@ -45,7 +47,7 @@ describe("fieldErrors", () => {
 
   it("lists every required field when the form is empty", () => {
     expect(Object.keys(fieldErrors(EMPTY_REQUEST)).sort()).toEqual(
-      ["address", "name", "phone", "serviceType"].sort(),
+      ["address", "contactPreference", "name", "phone", "serviceType"].sort(),
     );
   });
 
@@ -97,7 +99,12 @@ describe("parseOrderRequest", () => {
         dueDate: new Date("2026-11-15T12:00:00Z"),
         notes: "Side door is unlocked.",
         tracNumber: null,
-        customer: { name: "Sam Rivera", phone: "(555) 010-0100", email: "sam@example.com" },
+        customer: {
+          name: "Sam Rivera",
+          phone: "(555) 010-0100",
+          email: "sam@example.com",
+          contactPreference: "CALL",
+        },
       },
     });
   });
@@ -174,5 +181,48 @@ describe("TRAC number", () => {
     expect(fieldErrors({ ...valid, tracNumber: "not a number" })).toEqual({});
     const result = parseOrderRequest({ ...valid, tracNumber: "17408" });
     expect(result.ok && result.order.tracNumber).toBeNull();
+  });
+});
+
+describe("contact preference", () => {
+  it("accepts call, text or email, and saves it in the database's form", () => {
+    for (const [label, saved] of [
+      ["Call", "CALL"],
+      ["Text", "TEXT"],
+      ["Email", "EMAIL"],
+    ]) {
+      const result = parseOrderRequest({ ...valid, contactPreference: label });
+      expect(result.ok && result.order.customer.contactPreference).toBe(saved);
+    }
+  });
+
+  it("must be chosen, from the list", () => {
+    for (const contactPreference of ["", "Fax", "CALL"]) {
+      expect(fieldErrors({ ...valid, contactPreference })).toEqual({
+        contactPreference: "Choose how you'd like the business to reach you.",
+      });
+    }
+  });
+
+  it("needs an email when the customer prefers email", () => {
+    expect(fieldErrors({ ...valid, contactPreference: "Email", email: "" })).toEqual({
+      email: "Enter your email, so the business can reach you by email.",
+    });
+    expect(fieldErrors({ ...valid, contactPreference: "Email", email: "sam@" })).toEqual({
+      email: "Enter a valid email.",
+    });
+    expect(fieldErrors({ ...valid, contactPreference: "Text", email: "" })).toEqual({});
+  });
+});
+
+describe("preferenceNote", () => {
+  it("says how the customer would like to be reached", () => {
+    expect(preferenceNote("CALL")).toBe("Prefers a call");
+    expect(preferenceNote("TEXT")).toBe("Prefers a text");
+    expect(preferenceNote("EMAIL")).toBe("Prefers email");
+  });
+
+  it("says nothing for customers from before it was asked", () => {
+    expect(preferenceNote(null)).toBeNull();
   });
 });

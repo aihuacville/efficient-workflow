@@ -55,9 +55,17 @@ model Customer {
   name      String
   phone     String
   email     String?
+  /// How the customer would like the business to reach them. Null on customers from before it was asked.
+  contactPreference ContactPreference?
   createdAt DateTime @default(now())
 
   orders Order[]
+}
+
+enum ContactPreference {
+  CALL
+  TEXT
+  EMAIL
 }
 
 /// Where an order is in its life. lib/orders/status.ts decides which moves are allowed.

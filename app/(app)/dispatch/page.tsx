@@ -11,6 +11,7 @@ import { SwitchAccountPrompt } from "@/components/SwitchAccountPrompt";
 import { listBusinesses } from "@/lib/businesses";
 import { formatDate, timeAgo } from "@/lib/format";
 import { listOpenOrders } from "@/lib/orders/queries";
+import { BACKFLOW } from "@/lib/orders/request";
 import { nextActions, STAFF_STATUS_LABELS } from "@/lib/orders/status";
 import { getCurrentUser, toActor } from "@/lib/session";
 
@@ -20,6 +21,10 @@ type Order = Awaited<ReturnType<typeof listOpenOrders>>[number];
 
 const service: Column<Order> = { label: "Service", render: (o) => o.serviceType, primary: true };
 const address: Column<Order> = { label: "Address", render: (o) => o.address };
+const trac: Column<Order> = {
+  label: "TRAC number",
+  render: (o) => o.tracNumber ?? (o.serviceType === BACKFLOW ? "Not given" : "Not needed"),
+};
 const due: Column<Order> = {
   label: "Due date",
   render: (o) => (o.dueDate ? formatDate(o.dueDate) : "None given"),
@@ -85,6 +90,7 @@ export default async function DispatchPage() {
               service,
               address,
               due,
+              trac,
               { label: "Received", render: (o) => timeAgo(o.createdAt) },
               { label: "Notes", render: (o) => o.notes ?? "None" },
               { label: "Last offer", render: lastOffer },

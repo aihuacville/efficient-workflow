@@ -27,7 +27,10 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
             The service you need, the address, the due date on your notice, any notes, and for
             backflow testing, the TRAC number on your notice.
           </li>
-          <li>Your name and phone number, and your email if you give it.</li>
+          <li>
+            Your name and phone number, your email if you give it, and whether you&apos;d like a
+            call, a text or an email.
+          </li>
           <li>Each step of the job (for example, when it was scheduled and finished).</li>
           <li>Your rating and comment, if you leave one.</li>
         </ul>
@@ -44,13 +47,14 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <ul>
         <li>
-          <strong>The business that takes your job</strong> sees your name, phone number, address,
-          notes and TRAC number, so it can do the work. A business offered your job sees only the
-          service, address and notes until it accepts.
+          <strong>The business that takes your job</strong> sees your name, phone number, email, how
+          you&apos;d like to be contacted, address, notes and TRAC number, so it can do the work. A
+          business offered your job sees only the service, address and notes until it accepts.
         </li>
         <li>
-          <strong>Our dispatchers</strong> see the service, address and notes, to find a business
-          for you. They don&apos;t see your name or contact details on their page.
+          <strong>Our dispatchers</strong> see the service, address, due date, notes and TRAC
+          number, to find a business for you. They don&apos;t see your name or contact details on
+          their page.
         </li>
         <li>
           <strong>Anyone with your tracking link</strong> can see the request&apos;s progress and

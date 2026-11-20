@@ -9,10 +9,15 @@ import Checkbox from "@mui/material/Checkbox";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import FormHelperText from "@mui/material/FormHelperText";
+import FormLabel from "@mui/material/FormLabel";
 import LinearProgress from "@mui/material/LinearProgress";
 import MuiLink from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 import Stack from "@mui/material/Stack";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -27,6 +32,7 @@ import { forgetContact, readContact, rememberContact } from "@/lib/my-contact";
 import { rememberRequest } from "@/lib/my-requests";
 import {
   BACKFLOW,
+  CONTACT_PREFERENCES,
   EMPTY_REQUEST,
   type FieldErrors,
   fieldErrors,
@@ -513,9 +519,33 @@ export function RequestForm() {
                 autoComplete="tel"
                 slotProps={{ htmlInput: { maxLength: MAX_LENGTH.phone } }}
               />
+              <FormControl error={Boolean(errors.contactPreference)}>
+                <FormLabel id="contact-preference-label">
+                  How would you like the business to reach you?
+                </FormLabel>
+                <RadioGroup
+                  row
+                  name="contactPreference"
+                  aria-labelledby="contact-preference-label"
+                  value={fields.contactPreference}
+                  onChange={field("contactPreference").onChange}
+                >
+                  {CONTACT_PREFERENCES.map((option) => (
+                    <FormControlLabel
+                      key={option}
+                      value={option}
+                      control={<Radio />}
+                      label={option}
+                    />
+                  ))}
+                </RadioGroup>
+                {errors.contactPreference && (
+                  <FormHelperText>{errors.contactPreference}</FormHelperText>
+                )}
+              </FormControl>
               <TextField
                 {...field("email")}
-                label="Email (optional)"
+                label={fields.contactPreference === "Email" ? "Email" : "Email (optional)"}
                 type="email"
                 autoComplete="email"
                 slotProps={{ htmlInput: { maxLength: MAX_LENGTH.email } }}

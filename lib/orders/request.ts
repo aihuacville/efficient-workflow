@@ -18,6 +18,25 @@ export function needsDueDate(serviceType: string) {
   return DUE_DATE_REQUIRED.includes(serviceType.trim());
 }
 
+/** How the customer would like the business to reach them, as the form shows it. */
+export const CONTACT_PREFERENCES = ["Call", "Text", "Email"] as const;
+export type ContactPreferenceLabel = (typeof CONTACT_PREFERENCES)[number];
+
+/** As saved in the database. */
+export const CONTACT_PREFERENCE_VALUES = {
+  Call: "CALL",
+  Text: "TEXT",
+  Email: "EMAIL",
+} as const satisfies Record<ContactPreferenceLabel, string>;
+
+/** "Prefers a text" for staff pages, or null for customers from before it was asked. */
+export function preferenceNote(saved: string | null | undefined): string | null {
+  if (saved === "CALL") return "Prefers a call";
+  if (saved === "TEXT") return "Prefers a text";
+  if (saved === "EMAIL") return "Prefers email";
+  return null;
+}
+
 /** The form's fields, as typed. Optional ones are empty strings when left blank. */
 export type RequestFields = {
   serviceType: string;
@@ -29,6 +48,8 @@ export type RequestFields = {
   name: string;
   phone: string;
   email: string;
+  /** One of CONTACT_PREFERENCES. */
+  contactPreference: string;
 };
 
 export type FieldErrors = Partial<Record<keyof RequestFields, string>>;
@@ -36,7 +57,7 @@ export type FieldErrors = Partial<Record<keyof RequestFields, string>>;
 /** Which fields each form step asks for, so the form can check one step at a time. */
 export const STEP_FIELDS = {
   details: ["serviceType", "address", "dueDate", "tracNumber", "notes"],
-  contact: ["name", "phone", "email"],
+  contact: ["name", "phone", "email", "contactPreference"],
 } as const satisfies Record<string, readonly (keyof RequestFields)[]>;
 
 export const MAX_LENGTH: Record<keyof RequestFields, number> = {
@@ -48,6 +69,7 @@ export const MAX_LENGTH: Record<keyof RequestFields, number> = {
   name: 100,
   phone: 30,
   email: 200,
+  contactPreference: 10,
 };
 
 export const EMPTY_REQUEST: RequestFields = {
@@ -59,6 +81,7 @@ export const EMPTY_REQUEST: RequestFields = {
   name: "",
   phone: "",
   email: "",
+  contactPreference: "",
 };
 
 function isRealDate(value: string) {
@@ -109,8 +132,16 @@ export function fieldErrors(fields: RequestFields): FieldErrors {
   if (!f.name) errors.name = "Enter your name.";
   const digits = f.phone.replace(/\D/g, "").length;
   if (digits < 7 || digits > 15) errors.phone = "Enter a phone number we can reach you on.";
-  if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) {
-    errors.email = "Enter a valid email, or leave it empty.";
+  const prefersEmail = f.contactPreference === "Email";
+  if (!(CONTACT_PREFERENCES as readonly string[]).includes(f.contactPreference)) {
+    errors.contactPreference = "Choose how you'd like the business to reach you.";
+  }
+  if (!f.email) {
+    if (prefersEmail) errors.email = "Enter your email, so the business can reach you by email.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) {
+    errors.email = prefersEmail
+      ? "Enter a valid email."
+      : "Enter a valid email, or leave it empty.";
   }
 
   for (const key of Object.keys(MAX_LENGTH) as (keyof RequestFields)[]) {
@@ -129,7 +160,12 @@ export type NewOrder = {
   dueDate: Date | null;
   notes: string | null;
   tracNumber: string | null;
-  customer: { name: string; phone: string; email: string | null };
+  customer: {
+    name: string;
+    phone: string;
+    email: string | null;
+    contactPreference: (typeof CONTACT_PREFERENCE_VALUES)[ContactPreferenceLabel];
+  };
 };
 
 /** Checks the JSON the browser sent and turns it into a NewOrder. */
@@ -162,7 +198,13 @@ export function parseOrderRequest(
         fields.serviceType === BACKFLOW && fields.tracNumber
           ? normalizeTracNumber(fields.tracNumber)
           : null,
-      customer: { name: fields.name, phone: fields.phone, email: fields.email || null },
+      customer: {
+        name: fields.name,
+        phone: fields.phone,
+        email: fields.email || null,
+        contactPreference:
+          CONTACT_PREFERENCE_VALUES[fields.contactPreference as ContactPreferenceLabel],
+      },
     },
   };
 }

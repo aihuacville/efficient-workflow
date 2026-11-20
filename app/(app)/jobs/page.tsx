@@ -15,7 +15,7 @@ import { VisitCard } from "@/components/VisitCard";
 import { listVisitors } from "@/lib/businesses";
 import { formatDate, timeAgo } from "@/lib/format";
 import { listBusinessOrders, listTechnicianOrders } from "@/lib/orders/queries";
-import { BACKFLOW } from "@/lib/orders/request";
+import { BACKFLOW, preferenceNote } from "@/lib/orders/request";
 import { type Actor, nextActions, STAFF_STATUS_LABELS } from "@/lib/orders/status";
 import { getCurrentUser, type SessionUser, toActor } from "@/lib/session";
 
@@ -45,7 +45,16 @@ const visit: Column<Pick<Job, "visitStart">> = {
 };
 const customer: Column<Pick<Job, "customer">> = {
   label: "Customer",
-  render: (o) => (o.customer ? `${o.customer.name}, ${o.customer.phone}` : "Shown once you accept"),
+  render: (o) =>
+    o.customer
+      ? [
+          `${o.customer.name}, ${o.customer.phone}`,
+          o.customer.email,
+          preferenceNote(o.customer.contactPreference),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "Shown once you accept",
 };
 const status: Column<Pick<Job, "status">> = {
   label: "Status",

@@ -5,6 +5,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { formatDate } from "@/lib/format";
+import { preferenceNote } from "@/lib/orders/request";
 import { OrderActions } from "@/components/OrderActions";
 import type { Action, OrderState } from "@/lib/orders/status";
 import { STAFF_STATUS_LABELS } from "@/lib/orders/status";
@@ -17,7 +18,7 @@ type Visit = OrderState & {
   dueDate: Date | null;
   tracNumber: string | null;
   visitStart: Date | null;
-  customer: { name: string; phone: string };
+  customer: { name: string; phone: string; email: string | null; contactPreference: string | null };
 };
 
 /**
@@ -62,11 +63,17 @@ export function VisitCard({
           {visit.address}
         </Link>
         <Typography>
-          {visit.customer.name} ·{" "}
-          <Link href={`tel:${visit.customer.phone.replace(/[^\d+]/g, "")}`} underline="always">
-            Call {visit.customer.phone}
-          </Link>
+          {visit.customer.name}
+          {preferenceNote(visit.customer.contactPreference) &&
+            ` · ${preferenceNote(visit.customer.contactPreference)}`}
         </Typography>
+        <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
+          {contactLinks(visit.customer).map(({ href, label }) => (
+            <Link key={href} href={href} underline="always">
+              {label}
+            </Link>
+          ))}
+        </Stack>
         {visit.dueDate && (
           <Typography>
             Due date: <strong>{formatDate(visit.dueDate)}</strong>
@@ -90,5 +97,21 @@ export function VisitCard({
         />
       </Stack>
     </Paper>
+  );
+}
+
+/** Call, text and email links, with the customer's preferred way first. */
+function contactLinks(customer: Visit["customer"]) {
+  const phone = customer.phone.replace(/[^\d+]/g, "");
+  const links = [
+    { way: "CALL", href: `tel:${phone}`, label: `Call ${customer.phone}` },
+    { way: "TEXT", href: `sms:${phone}`, label: "Text" },
+    ...(customer.email
+      ? [{ way: "EMAIL", href: `mailto:${customer.email}`, label: `Email ${customer.email}` }]
+      : []),
+  ];
+  return links.sort(
+    (a, b) =>
+      Number(b.way === customer.contactPreference) - Number(a.way === customer.contactPreference),
   );
 }
