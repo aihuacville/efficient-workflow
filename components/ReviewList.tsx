@@ -12,7 +12,8 @@ import { Fragment, useEffect, useState } from "react";
 type Review = { id: string; stars: number; comment: string; createdAt: string };
 
 /**
- * A business's reviews, newest first, loaded from GET /api/ratings.
+ * A business's reviews, newest first, with their average, loaded from GET /api/ratings. Shown on
+ * the owner's page.
  * Change `refreshKey` to load the list again, for example after a new rating is sent.
  */
 export function ReviewList({
@@ -64,10 +65,7 @@ export function ReviewList({
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Typography variant="h2" component="h2">
-        All reviews
-      </Typography>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1, mb: 2 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
         <Rating value={average} precision={0.1} readOnly />
         <Typography color="text.secondary">
           {average.toFixed(1)} from {reviews.length} review{reviews.length === 1 ? "" : "s"}

@@ -3,11 +3,16 @@ import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { Analytics } from "@/components/Analytics";
 
-/** Customer-facing pages: a plain top bar, no app navigation. Mostly used on phones. */
+/**
+ * Customer-facing pages: a plain top bar, no app navigation. Mostly used on phones. Google
+ * Analytics runs here only, never on staff pages.
+ */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+      <Analytics />
       <AppBar position="static" sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Toolbar>
           <Typography
@@ -20,8 +25,16 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </Typography>
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ flex: 1, pb: "env(safe-area-inset-bottom)" }}>
+      <Box component="main" sx={{ flex: 1 }}>
         {children}
+      </Box>
+      <Box
+        component="footer"
+        sx={{ py: 3, pb: "max(24px, env(safe-area-inset-bottom))", textAlign: "center" }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          <Link href="/privacy">Privacy</Link>
+        </Typography>
       </Box>
     </Box>
   );
