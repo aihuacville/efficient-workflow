@@ -4,6 +4,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { LocalDateTime } from "@/components/LocalDateTime";
+import { formatDate } from "@/lib/format";
 import { OrderActions } from "@/components/OrderActions";
 import type { Action, OrderState } from "@/lib/orders/status";
 import { STAFF_STATUS_LABELS } from "@/lib/orders/status";
@@ -13,6 +14,7 @@ type Visit = OrderState & {
   serviceType: string;
   address: string;
   notes: string | null;
+  dueDate: Date | null;
   tracNumber: string | null;
   visitStart: Date | null;
   customer: { name: string; phone: string };
@@ -65,6 +67,11 @@ export function VisitCard({
             Call {visit.customer.phone}
           </Link>
         </Typography>
+        {visit.dueDate && (
+          <Typography>
+            Due date: <strong>{formatDate(visit.dueDate)}</strong>
+          </Typography>
+        )}
         {visit.tracNumber && (
           <Typography>
             TRAC number: <strong>{visit.tracNumber}</strong>

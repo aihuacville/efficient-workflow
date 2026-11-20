@@ -117,6 +117,7 @@ export default async function DispatchPage() {
             columns={[
               service,
               address,
+              due,
               { label: "Business", render: (o) => o.business?.name },
               {
                 label: "Status",
