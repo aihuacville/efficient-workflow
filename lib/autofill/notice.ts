@@ -42,7 +42,8 @@ Fill in only what the notice itself says. Leave a field as an empty string when 
 
 - serviceType: the one service the notice asks for, from the list. Use "Other" if it asks for a service that isn't listed, and "" if the photo isn't a notice or you can't tell.
 - address: the address of the property where the work is needed, not the address of whoever sent the notice. One line, as written on the notice.
-- dueDate: the date the work or test is due. Notices label it in different ways, for example "Due date", "Due by", "Test due", "Must be completed by", "Compliance date" or "Deadline". Write it as YYYY-MM-DD: a date printed as 12/15/2026 or December 15, 2026 is 2026-12-15 (dates on these notices are month first). Only a date the notice states; don't work one out from wording like "within 30 days". If the notice gives only a month and year, leave dueDate empty and say "Due <month> <year>" in notes.
+- dueDate: the date the work or test is due. Notices label it in different ways, for example "Due date", "Due by", "Test due", "Must be completed by", "Compliance date" or "Deadline". Never the date the notice was written or sent. Write it as YYYY-MM-DD: a date printed as 12/15/2026 or December 15, 2026 is 2026-12-15 (dates on these notices are month first). If the due date is printed without a year, such as "July 1", write just the month and day as printed ("July 1"); don't add a year. Only a date the notice states; don't work one out from wording like "within 30 days". If the notice gives only a month and year, leave dueDate empty and say "Due <month> <year>" in notes.
+- noticeDate: the date the notice was written or sent, often labelled "Notice date", "Date" or "Mailed", as YYYY-MM-DD. "" if the notice doesn't show one.
 - tracNumber: for backflow testing notices only, the TRAC number (Tester Remote Access Code), usually printed as "TRAC#" followed by digits, for example "TRAC# 17408". Give just the digits. Only a number the notice labels as the TRAC number; never an account, permit, meter or serial number. "" if there isn't one.
 - notes: one or two short sentences for the business doing the work: what the notice asks for, and any reference or permit number other than the TRAC number. No names, phone numbers or email addresses.`;
 
@@ -53,10 +54,11 @@ export const NOTICE_SCHEMA = {
     serviceType: { type: "string", enum: [...SERVICE_TYPES, ""] },
     address: { type: "string" },
     dueDate: { type: "string" },
+    noticeDate: { type: "string" },
     tracNumber: { type: "string" },
     notes: { type: "string" },
   },
-  required: ["serviceType", "address", "dueDate", "tracNumber", "notes"],
+  required: ["serviceType", "address", "dueDate", "noticeDate", "tracNumber", "notes"],
   additionalProperties: false,
 } as const;
 
@@ -89,8 +91,39 @@ export function toIsoDate(value: string): string {
   } else {
     return "";
   }
+  return isoFrom(year, month, day);
+}
+
+function isoFrom(year: number, month: number, day: number) {
   const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   return month >= 1 && isRealDate(iso) ? iso : "";
+}
+
+/**
+ * A due date printed without a year ("July 1", "Jul. 1", "1 July", "7/1"), given the year from
+ * the notice's own date: the first such day on or after the notice date. Notice dated April 30,
+ * 2026, due July 1: 2026-07-01. Notice dated November 3, 2026, due January 15: 2027-01-15.
+ * Returns "" when either date can't be read.
+ */
+export function dueDateWithoutYear(value: string, noticeDate: string): string {
+  const notice = toIsoDate(noticeDate);
+  if (!notice) return "";
+  const v = value.trim().replace(/(\d)(st|nd|rd|th)\b/gi, "$1");
+  let month: number, day: number;
+  let m: RegExpMatchArray | null;
+  if ((m = v.match(/^([a-z]{3})[a-z]*\.?\s+(\d{1,2})$/i))) {
+    [month, day] = [MONTHS.indexOf(m[1]!.toLowerCase()) + 1, Number(m[2])];
+  } else if ((m = v.match(/^(\d{1,2})\s+([a-z]{3})[a-z]*\.?$/i))) {
+    [day, month] = [Number(m[1]), MONTHS.indexOf(m[2]!.toLowerCase()) + 1];
+  } else if ((m = v.match(/^(\d{1,2})\/(\d{1,2})$/))) {
+    [month, day] = [Number(m[1]), Number(m[2])];
+  } else {
+    return "";
+  }
+  const year = Number(notice.slice(0, 4));
+  const sameYear = isoFrom(year, month, day);
+  if (sameYear && sameYear >= notice) return sameYear;
+  return isoFrom(year + 1, month, day);
 }
 
 function text(value: unknown, max: number) {
@@ -110,7 +143,9 @@ export function toAutofillFields(answer: unknown): AutofillFields {
   >;
   const serviceType = text(raw.serviceType, MAX_LENGTH.serviceType);
   // Read the date before shortening anything: "December 15, 2026" is longer than the field.
-  const dueDate = toIsoDate(text(raw.dueDate, 40));
+  // Some notices print the due date without a year; the notice's own date supplies it.
+  const dueText = text(raw.dueDate, 40);
+  const dueDate = toIsoDate(dueText) || dueDateWithoutYear(dueText, text(raw.noticeDate, 40));
   const address = text(raw.address, MAX_LENGTH.address);
   const trac = normalizeTracNumber(text(raw.tracNumber, MAX_LENGTH.tracNumber));
   return {

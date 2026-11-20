@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_REQUEST } from "../orders/request";
 import {
+  dueDateWithoutYear,
   isEmptyAutofill,
   toIsoDate,
   MAX_PHOTO_BYTES,
@@ -152,5 +153,44 @@ describe("toAutofillFields due date", () => {
     expect(toAutofillFields({ dueDate: "12/15/2026" }).dueDate).toBe("2026-12-15");
     // Longer than the form's 10-character field: must be read before it's shortened.
     expect(toAutofillFields({ dueDate: "December 15, 2026" }).dueDate).toBe("2026-12-15");
+  });
+});
+
+describe("dueDateWithoutYear", () => {
+  it("takes the year from the notice date", () => {
+    // The Hillsboro backflow notice: "Notice Date April 30, 2026", "Due Date July 1".
+    expect(dueDateWithoutYear("July 1", "2026-04-30")).toBe("2026-07-01");
+    expect(dueDateWithoutYear("Jul. 1st", "April 30, 2026")).toBe("2026-07-01");
+    expect(dueDateWithoutYear("1 July", "2026-04-30")).toBe("2026-07-01");
+    expect(dueDateWithoutYear("7/1", "4/30/2026")).toBe("2026-07-01");
+  });
+
+  it("rolls into the next year when the day has already passed", () => {
+    expect(dueDateWithoutYear("January 15", "2026-11-03")).toBe("2027-01-15");
+  });
+
+  it("gives up without a readable notice date or due date", () => {
+    expect(dueDateWithoutYear("July 1", "")).toBe("");
+    expect(dueDateWithoutYear("July 1", "spring")).toBe("");
+    expect(dueDateWithoutYear("July", "2026-04-30")).toBe("");
+    expect(dueDateWithoutYear("Febtember 40", "2026-04-30")).toBe("");
+  });
+});
+
+describe("toAutofillFields with a due date that has no year", () => {
+  it("fills it in from the notice date", () => {
+    expect(toAutofillFields({ dueDate: "July 1", noticeDate: "2026-04-30" }).dueDate).toBe(
+      "2026-07-01",
+    );
+  });
+
+  it("prefers a full due date over the notice date", () => {
+    expect(toAutofillFields({ dueDate: "2027-07-01", noticeDate: "2026-04-30" }).dueDate).toBe(
+      "2027-07-01",
+    );
+  });
+
+  it("leaves it empty when there's no notice date", () => {
+    expect(toAutofillFields({ dueDate: "July 1" }).dueDate).toBe("");
   });
 });
