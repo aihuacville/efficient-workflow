@@ -349,7 +349,8 @@ export function RequestForm() {
                 slotProps={{ htmlInput: { maxLength: MAX_LENGTH.email } }}
               />
               <Typography variant="body2" color="text.secondary">
-                Only the business that takes the job sees your contact details.
+                Only the business that takes the job sees your contact details, and only to do the
+                work. <Link href="/privacy">How we use your details</Link>
               </Typography>
             </>
           )}

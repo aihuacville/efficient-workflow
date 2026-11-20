@@ -706,16 +706,30 @@ Deploying on **Friday**, not Sunday, leaves time to fix hosting problems. Sunday
 - [ ] Rate limiting on public endpoints, and storing photos (notice photos, and the technician's optional photo of the finished work)
 - [ ] Integration tests for orders and permissions
 - [ ] Automatic checks on every push and pull request (GitHub Actions: tests, typecheck, build), so a broken commit can't deploy
-- [ ] Privacy policy and terms pages, and a line on the request form saying how contact details are used
+- [x] Privacy page ([app/(public)/privacy/page.tsx](app/(public)/privacy/page.tsx)), linked from the footer of customer pages and from the contact step of the request form. Keep it in step with what's stored and who sees it
+  - [ ] *You:* in Vercel, add `PRIVACY_CONTACT_EMAIL` (the address people write to for a copy or deletion of their details), then redeploy. Until it's set, the page doesn't show an address
+  - [ ] Terms page
+- [x] Google Analytics on customer pages only (home, request form, tracking, privacy), US customers, no ads ([components/Analytics.tsx](components/Analytics.tsx), [lib/analytics.ts](lib/analytics.ts)). Off until `NEXT_PUBLIC_GA_ID` is set. Tracking links are sent as `/track/:token`, never the real token; form contents are never sent; it doesn't load when the browser sends Global Privacy Control. The privacy page describes it only when it's on
+  - [ ] *You:* create a GA4 property and a web data stream; copy its measurement ID (`G-…`)
+  - [ ] *You:* in the data stream's **Enhanced measurement** settings, turn off **Page changes based on browser history events** (it would send real tracking links; the app sends its own cleaned page views). Leave **Site search** off too
+  - [ ] *You:* in **Admin → Data collection**, leave **Google signals** off and don't link Google Ads (that would count as "sharing" under California law; see the ads item under Later)
+  - [ ] *You:* in Vercel, add `NEXT_PUBLIC_GA_ID` for **Production**, then redeploy. Check the privacy page now shows the Analytics paragraph, and that **Realtime** in Analytics shows `/track/:token`, not real tokens
+  - [ ] Events for the request funnel (form started, each step, sent), with no form contents
 - [ ] Error tracking (for example Sentry), so failures raise an alert instead of a customer complaint
 - [ ] Database backups: check Neon's restore window on our plan, and try a restore once before real data depends on it
 - [ ] Staff hear about new work without reloading: the dispatcher about new requests, owners about offers (with email notifications). Pages already refresh every 30 seconds; this is about alerts when the page isn't open
-- [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request
+- [ ] Data retention: how long to keep customer details after a job ends, and how to delete them on request (then state the period on the privacy page)
 - [ ] Move open TODOs and demo feedback to GitHub Issues; work on branches with a pull request for every change, and protect `main` (see [Decisions](#tracking-work-feature-requests-and-pull-requests-decided-oct-30-2026))
 - [ ] Onboard 1–3 businesses in one city, print QR codes, run a 6-week pilot
 
 ### Later (based on the pilot)
 
+- [ ] Ads: Meta pixel and Google Ads (conversion tracking, remarketing). These count as "selling or sharing" under California and other US state laws, so before turning them on:
+  - [ ] A **Do Not Sell or Share My Personal Information** link in the footer of customer pages, with a page that records the choice and keeps ad tags off for that person
+  - [ ] Keep honoring Global Privacy Control as an opt-out of sharing (no ad tags at all when it's on)
+  - [ ] Load ad tags only on customer pages and send cleaned addresses (`/track/:token`), as Analytics does; never send name, phone, email or address, including through "enhanced conversions" or "advanced matching", unless the privacy page says so
+  - [ ] Update the privacy page: which ad partners, what they get, how to opt out; remove "we don't sell or share" and "we don't use advertising cookies"
+  - [ ] Consider a consent manager (Osano, Cookiebot, Termly) once there are several tags, or if we serve EU/UK visitors, who need opt-in consent before any analytics or ads
 - [ ] Payments: Stripe (including Apple Pay), and payouts to businesses
   - [ ] Add "Paid" (with an emailed receipt) as a step on the tracking page
 - [ ] Automatic dispatch for routine jobs: send the top suggestion without approval, with offer timeouts and fallback to the next business. The dispatcher still handles exceptions, and the approval mode stays available
